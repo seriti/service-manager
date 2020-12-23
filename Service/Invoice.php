@@ -92,8 +92,9 @@ class Invoice extends Table
         if(!$this->access['read_only']) {
             $list['SELECT'] = 'Action for selected '.$this->row_name_plural;
             $list['STATUS_CHANGE'] = 'Change invoice Status.';
-            $list['CREATE_PDF'] = 'Create invoice PDF';
-            $list['EMAIL_INVOICE'] = 'Email invoice PDF to client';
+            //$list['CREATE_PDF'] = 'Create invoice PDF';
+            $list['EMAIL_CLIENT'] = 'Email invoice PDF to Client';
+            $list['EMAIL_INVOICE'] = 'Email invoice PDF to any address';
 
         }  
         
@@ -188,18 +189,21 @@ class Invoice extends Table
                             }  
                         }
                         
+                        /*
                         if($action === 'CREATE_PDF') {
                             Helpers::createInvoicePdf($this->db,$this->container,$invoice_id,$doc_name,$error_tmp);
                             if($error_tmp === '') {
                                 $audit_str .= ' success!';
                                 $audit_count++;
-                                $this->addMessage('Invoice['.$invoice_id.'] sent to email['.$email_address.']');      
+                                $this->addMessage('Invoice['.$invoice_id.'] PDF created');      
                             } else {
                                 $this->addError('Cound not send invoice['.$invoice_id.'] to email address['.$email_address.']!');
                             }   
                         }  
+                        */
 
-                        if($action === 'EMAIL_INVOICE') {
+                        if($action === 'EMAIL_INVOICE' or $action === 'EMAIL_CLIENT') {
+                            if($action === 'EMAIL_CLIENT') $email_address = 'DEFAULT';
                             Helpers::sendInvoice($this->db,$this->container,$invoice_id,$email_address,$error_tmp);
                             if($error_tmp === '') {
                                 $audit_str .= ' success!';

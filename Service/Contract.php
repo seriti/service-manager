@@ -33,7 +33,8 @@ class Contract extends Table
         $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'contract ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'division_id','type'=>'INTEGER','title'=>'Division','join'=>'name FROM '.TABLE_PREFIX.'division WHERE division_id']);
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client','onchange'=>'clientChange()']);
-        $this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Contract code','hint'=>'A unique code used to identify contract to client']);
+        $this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Contract code','new'=>'CALCULATE',
+                            'hint'=>'A unique code used to identify contract to client. CALCULATE default will increment division contract counter']);
         $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'Location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);
         $this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'name FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
         
@@ -51,14 +52,14 @@ class Contract extends Table
         if($param['type'] === 'REPEAT') {
             $this->addTableCol(['id'=>'date_renew','type'=>'DATE','title'=>'Date renew','new'=>date('Y-m-d')]);
             $this->addTableCol(['id'=>'no_months','type'=>'INTEGER','title'=>'Contract months','new'=>12]);
-            $this->addTableCol(['id'=>'no_visits','type'=>'INTEGER','title'=>'No visits','new'=>0]);
+            $this->addTableCol(['id'=>'no_visits','type'=>'INTEGER','title'=>'No visits','new'=>12,'hint'=>'How many visits are planned over total contract period']);
             $this->addTableCol(['id'=>'visit_day_id','type'=>'INTEGER','title'=>'Preferred visit day','join'=>'name FROM '.TABLE_PREFIX.'service_day WHERE day_id']);
             $this->addTableCol(['id'=>'visit_time_from','type'=>'TIME','title'=>'Preferred visit time from','new'=>'10:00']);
             $this->addTableCol(['id'=>'visit_time_to','type'=>'TIME','title'=>'Preferred visit time to','new'=>'12:00']);
-            $this->addTableCol(['id'=>'time_estimate','type'=>'INTEGER','title'=>'Time estimate(minutes)']);
+            $this->addTableCol(['id'=>'time_estimate','type'=>'INTEGER','title'=>'Time estimate(minutes)','new'=>60]);
             $this->addTableCol(['id'=>'price','type'=>'DECIMAL','title'=>'Price initial visit']);
             $this->addTableCol(['id'=>'price_visit','type'=>'DECIMAL','title'=>'Price per visit']); 
-            $this->addTableCol(['id'=>'price_annual_pct','type'=>'DECIMAL','title'=>'Price annual pct']);  
+            $this->addTableCol(['id'=>'price_annual_pct','type'=>'DECIMAL','title'=>'Price annual pct','new'=>0]);  
 
             $search = ['contract_id','division_id','client_id','client_code','contact_id','agent_id','location_id',
                        'user_id_responsible','user_id_sold','user_id_signed','user_id_checked','signed_by',
@@ -68,8 +69,8 @@ class Contract extends Table
 
         if($param['type'] === 'SINGLE') {
             $this->addTableCol(['id'=>'price','type'=>'DECIMAL','title'=>'Price']);
-            $this->addTableCol(['id'=>'discount','type'=>'DECIMAL','title'=>'Discount','hint'=>'value less than 50 assumed to be percentage discount']);
-            $this->addTableCol(['id'=>'time_estimate','type'=>'INTEGER','title'=>'Time estimate(minutes)']);
+            $this->addTableCol(['id'=>'discount','type'=>'DECIMAL','title'=>'Discount','hint'=>'value less than 50 assumed to be percentage discount','new'=>'0']);
+            $this->addTableCol(['id'=>'time_estimate','type'=>'INTEGER','title'=>'Time estimate(minutes)','new'=>60]);
 
             $search = ['contract_id','division_id','client_id','client_code','contact_id','agent_id','location_id',
                        'user_id_responsible','user_id_sold','user_id_signed','user_id_checked','signed_by',
@@ -143,7 +144,20 @@ class Contract extends Table
            if($value <= 50) $value = $value.'%'; 
         }
     }
-    //protected function beforeUpdate($id,$context,&$data,&$error) {}
+    
+    protected function beforeUpdate($id,$context,&$data,&$error) 
+    {
+        if($data['client_code'] === 'CALCULATE') {
+            $data['client_code'] = Helpers::getContractCode($this->db,TABLE_PREFIX,$data['division_id']); 
+        }
+
+        $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
+               'WHERE client_code = "'.$this->db->escapeSql($data['client_code']).'" AND contract_id <> "'.$this->db->escapeSql($id).'" ';
+        $count = $this->db->readSqlValue($sql);
+        if($count != 0) $error .= 'Client code['.$data['client_code'].'] is NOT unique to contract. You must enter a client code that has not been used before.';
+            
+
+    }
     //protected function afterUpdate($id,$context,$data) {}
     //protected function beforeDelete($id,&$error) {}
     //protected function afterDelete($id) {}

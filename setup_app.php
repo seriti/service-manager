@@ -8,8 +8,9 @@ This tells the framework about module: name, sub-memnu route list and title, dat
 
 $container['config']->set('module','service',['name'=>'Service manager',
                                              'route_root'=>'admin/service/',
-                                             'route_list'=>['dashboard'=>'Dashboard','client'=>'Clients','contract_repeat'=>'Repeat contracts','contract_single'=>'Single contracts',
-                                                            'diary'=>'Diary','service_visit'=>'Visits','invoice'=>'Invoices','setup_dashboard'=>'Setup'],
+                                             'route_list'=>['dashboard'=>'Dashboard','client'=>'Clients','contract_repeat'=>'Repeat contracts',
+                                                            'contract_single'=>'Single contracts','diary'=>'Diary','service_visit'=>'Visits',
+                                                            'invoice'=>'Invoices','report'=>'Reports','setup_dashboard'=>'Setup'],
                                              'table_prefix'=>'srv_'
                                             ]);
 

@@ -2,9 +2,9 @@
 namespace App\Service;
 
 use Seriti\Tools\Table;
-//use Seriti\Tools\Date;
-//use Seriti\Tools\Form;
-//use Seriti\Tools\Secure;
+use Seriti\Tools\Validate;
+use Seriti\Tools\Form;
+use Seriti\Tools\Secure;
 
 use App\Service\Helpers;
 
@@ -18,22 +18,17 @@ class Client extends Table
         $this->addForeignKey(['table'=>TABLE_PREFIX.'client_contact','col_id'=>'client_id','message'=>'Client contacts exist for this Client']);
         $this->addForeignKey(['table'=>TABLE_PREFIX.'client_location','col_id'=>'client_id','message'=>'Client locations exist for this Client']);
 
-        $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'client ID','key'=>true,'key_auto'=>true]);
+        $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'client_category WHERE category_id']);
         $this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Client code']);
         $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Account code','required'=>false]);
-        $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name']);
-        $this->addTableCol(['id'=>'address_physical','type'=>'TEXT','title'=>'Address physical','required'=>false]);
-        $this->addTableCol(['id'=>'address_postal','type'=>'TEXT','title'=>'Address postal','required'=>false]);
-        $this->addTableCol(['id'=>'tel','type'=>'STRING','title'=>'Tel','required'=>true]);
-        $this->addTableCol(['id'=>'tel_alt','type'=>'STRING','title'=>'Tel alt','required'=>false]);
-        $this->addTableCol(['id'=>'email','type'=>'EMAIL','title'=>'Email']);
-        $this->addTableCol(['id'=>'email_alt','type'=>'EMAIL','title'=>'Email alt','required'=>false]);
-        $this->addTableCol(['id'=>'invoice_no','type'=>'INTEGER','title'=>'Invoice no']);
-        $this->addTableCol(['id'=>'invoice_prefix','type'=>'STRING','title'=>'Invoice prefix']);
+        $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name','hint'=>'This will appear in dropdown select lists']);
+        $this->addTableCol(['id'=>'company_title','type'=>'STRING','title'=>'Company title','required'=>false,
+                            'hint'=>'Official company title for use on invoices and other documents']);
+        $this->addTableCol(['id'=>'company_no','type'=>'STRING','title'=>'Company Reg. No.','required'=>false,
+                            'hint'=>'Official company registration No. for use on invoices and other documents']);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
       
-
         $this->addSortOrder('T.client_id DESC','Most recent first','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
@@ -42,7 +37,7 @@ class Client extends Table
         $this->addAction(['type'=>'popup','text'=>'Contacts','url'=>'client_contact','mode'=>'view','width'=>700,'height'=>600]);
         $this->addAction(['type'=>'popup','text'=>'Locations','url'=>'client_location','mode'=>'view','width'=>600,'height'=>600]);
 
-        $this->addSearch(['client_id','category_id','client_code','account_code','name','address_physical','address_postal','tel','email','status','invoice_no','invoice_prefix'],['rows'=>3]);
+        $this->addSearch(['client_id','category_id','client_code','account_code','name','company_title','company_no','status'],['rows'=>2]);
 
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'client_category ORDER BY sort');
         $status = ['OK','HIDE'];
@@ -61,10 +56,60 @@ class Client extends Table
     }
 
     /*** EVENT PLACEHOLDER FUNCTIONS ***/
-    //protected function beforeUpdate($id,$context,&$data,&$error) {}
+    protected function viewEditXtra($id,$form,$context) 
+    {
+        $html = '';
+
+        if($context === 'INSERT') {
+            $param = ['class'=>$this->classes['edit']];
+            $html .= '<span class="edit_label"><span class="star">*</span>Primary contact name:</span><br/>'.
+                     Form::textInput('contact_name',$form['contact_name'],$param); 
+            $html .= '<span class="edit_label"><span class="star">*</span>Primary contact email:</span><br/>'.
+                     Form::textInput('contact_email',$form['contact_email'],$param); 
+            $html .= '<span class="edit_label"><span class="star">*</span>Primary contact tel:</span><br/>'.
+                     Form::textInput('contact_tel',$form['contact_tel'],$param); 
+            $html .= '<span class="edit_label"><span class="star">*</span>Primary Physical address:</span><br/>'.
+                     Form::textAreaInput('address_physical',$form['address_physical'],50,5,$param); 
+            $html .= '<span class="edit_label">Primary Postal address:</span><br/>'.
+                     Form::textAreaInput('address_postal',$form['address_postal'],50,5,$param); 
+
+            return $html;
+        }
+        
+        
+    }
+
+    protected function beforeUpdate($id,$context,&$data,&$error) 
+    {
+        $error_tmp = '';
+        //validate contact and location data when creating client
+        if($context === 'INSERT') {
+            Validate::string('Primary contact name',1,64,$_POST['contact_name'],$error_tmp);
+            if($error_tmp !== '') $this->addError($error_tmp);
+            Validate::string('Primary contact telephone',1,64,$_POST['contact_tel'],$error_tmp);
+            if($error_tmp !== '') $this->addError($error_tmp);
+            Validate::email('Primary contact email address',$_POST['contact_email'],$error_tmp);
+            if($error_tmp !== '') $this->addError($error_tmp);
+            Validate::string('Primary physical address',1,1000,$_POST['address_physical'],$error_tmp);
+            if($error_tmp !== '') $this->addError($error_tmp);
+            Validate::string('Primary postal address',0,1000,$_POST['address_postal'],$error_tmp);
+            if($error_tmp !== '') $this->addError($error_tmp);
+        } 
+
+
+    }
     protected function afterUpdate($id,$context,$data) 
     {
-        Helpers::setupClient($this->db,TABLE_PREFIX,$id) ;
+        if($context === 'INSERT') {
+            $setup['contact_name'] = $_POST['contact_name'];
+            $setup['contact_email'] = $_POST['contact_email'];
+            $setup['contact_tel'] = $_POST['contact_tel'];
+
+            $setup['address_physical'] = $_POST['address_physical'];
+            $setup['address_postal'] = $_POST['address_postal'];
+
+            Helpers::setupClient($this->db,TABLE_PREFIX,$id,$setup) ;
+        }    
 
     }
     //protected function beforeDelete($id,&$error) {}

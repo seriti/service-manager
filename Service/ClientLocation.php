@@ -8,6 +8,8 @@ use Seriti\Tools\Table;
 
 class ClientLocation extends Table
 {
+    protected $type = ['PHYSICAL'=>'Physical: Premises location','POSTAL'=>'Postal address','INVOICE'=>'Admin: Invoice delivery'];
+
     public function setup($param = []) 
     {
         $param = ['row_name'=>'Client location','col_label'=>'name','pop_up'=>true];
@@ -21,6 +23,7 @@ class ClientLocation extends Table
         $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'location ID','key'=>true,'key_auto'=>true,'list'=>false]);
         $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'location_category WHERE category_id']);
         $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name']);
+        $this->addTableCol(['id'=>'type_id','type'=>'STRING','title'=>'Address Type']);
         $this->addTableCol(['id'=>'size','type'=>'INTEGER','title'=>'Size','required'=>false]);
         $this->addTableCol(['id'=>'address','type'=>'TEXT','title'=>'Address','required'=>false,'list'=>true]);
         $this->addTableCol(['id'=>'tel','type'=>'STRING','title'=>'Tel','required'=>false,'list'=>false]);
@@ -36,13 +39,24 @@ class ClientLocation extends Table
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
 
-        $this->addSearch(['location_id','category_id','name','size','address','tel','email','sort','status'],['rows'=>2]);
+        $this->addSearch(['location_id','category_id','name','tel','email','sort','type_id','status'],['rows'=>4]);
 
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'location_category ORDER BY sort');
+        
+        $this->addSelect('type_id',['list'=>$this->type,'list_assoc'=>true]);
+        
         $status = ['OK','HIDE'];
         $this->addSelect('status',['list'=>$status,'list_assoc'=>false]);
     }
 
+    protected function modifyRowValue($col_id,$data,&$value)
+    {
+        
+        if($col_id === 'type_id' and $value != '' and isset($this->type[$value])) {
+            $value = $this->type[$value];
+        }
+
+    }  
     /*** EVENT PLACEHOLDER FUNCTIONS ***/
     //protected function beforeUpdate($id,$context,&$data,&$error) {}
     //protected function afterUpdate($id,$context,$data) {}

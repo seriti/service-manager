@@ -21,15 +21,7 @@ class SetupData extends SetupModuledata
                                 `client_code` varchar(64) NOT NULL,
                                 `account_code` varchar(64) NOT NULL,
                                 `name` varchar(250) NOT NULL,
-                                `address_physical` TEXT NOT NULL,
-                                `address_postal` TEXT NOT NULL,
-                                `tel` varchar(64) NOT NULL,
-                                `tel_alt` varchar(64) NOT NULL,
-                                `email` varchar(64) NOT NULL,
-                                `email_alt` varchar(64) NOT NULL,
                                 `status` varchar(64) NOT NULL,
-                                `invoice_no` int(11) NOT NULL,
-                                `invoice_prefix` varchar(8) NOT NULL,
                                 PRIMARY KEY (`client_id`)
                             ) ENGINE=InnoDB DEFAULT CHARSET=utf8'); 
 
@@ -49,6 +41,7 @@ class SetupData extends SetupModuledata
                                 `contact_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `client_id` int(11) NOT NULL,
                                 `location_id` int(11) NOT NULL,
+                                `type_id` varchar(64) NOT NULL,
                                 `name` varchar(64) NOT NULL,
                                 `position` varchar(64) NOT NULL,
                                 `tel` varchar(64) NOT NULL,
@@ -67,6 +60,7 @@ class SetupData extends SetupModuledata
                                 `location_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `category_id` int(11) NOT NULL,
                                 `client_id` int(11) NOT NULL,
+                                `type_id` varchar(64) NOT NULL,
                                 `name` varchar(250) NOT NULL,
                                 `size` int(11) NOT NULL,
                                 `address` TEXT NOT NULL,
@@ -93,6 +87,11 @@ class SetupData extends SetupModuledata
                             'CREATE TABLE `TABLE_NAME` (
                               `division_id` INT NOT NULL AUTO_INCREMENT,
                               `name` VARCHAR(250) NOT NULL,
+                              `invoice_prefix` varchar(8) NOT NULL,
+                              `invoice_no` int(11) NOT NULL,
+                              `invoice_address` TEXT NOT NULL,
+                              `invoice_contact` TEXT NOT NULL,
+                              `invoice_info` TEXT NOT NULL,
                               `sort` INT NOT NULL,
                               `status` VARCHAR(64) NOT NULL,
                               PRIMARY KEY (`division_id`)

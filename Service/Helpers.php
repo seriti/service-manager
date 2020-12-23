@@ -86,17 +86,19 @@ class Helpers {
             $count = $db->readSqlValue($sql,0);
             */
             //NB: no_visits must be updated by invoice creation
+            //NOT sure if i want to get too clever, can just count actual visits.
+            //use no_visits to determine frequency of visits rather than visit counter??
             if($contract['no_visits'] == 0) {
                 $price = $contract['price'];
-                $visit_no = 1;
+                //$visit_no = 1;
             } else {
-                $visit_no = $contract['no_visits'] + 1;
+                //$visit_no = $contract['no_visits'] + 1;
                 $price = $contract['price_visit'];
             }    
 
             $invoice_item = [];
             $invoice_item['code'] = $contract['client_code'];
-            $invoice_item['name'] = 'Repeat Contract: '.$contract['client_code'].' Visit-'.$visit_no ;
+            $invoice_item['name'] = 'Repeat Contract: '.$contract['client_code'];//' Visit-'.$visit_no ;
             $invoice_item['quantity'] = 1;
             $invoice_item['units'] = '';
             $invoice_item['price'] = $price;
@@ -179,13 +181,14 @@ class Helpers {
         $error = '';
         $invoice_id = 0;
 
-        $table_client = $table_prefix.'client';
+        $table_division = $table_prefix.'division';
         $table_invoice = $table_prefix.'contract_invoice';
         $table_item = $table_prefix.'invoice_item';
 
         $contract = self::get($db,$table_prefix,'contract',$contract_id);
-        $client = self::get($db,$table_prefix,'client',$contract['client_id']);
-        $invoice_no = $client['invoice_prefix'].($client['invoice_no']+1);
+        $division = self::get($db,$table_prefix,'division',$contract['client_id']);
+
+        $invoice_no = $division['invoice_prefix'].($division['invoice_no']+1);
 
         //check invoice_no unique
         $sql='SELECT * FROM '.$table_invoice.' WHERE invoice_no = "'.$db->escapeSql($invoice_no).'" ';
@@ -229,15 +232,15 @@ class Helpers {
 
         } 
 
-        //finally update client invoice counter
-        $sql = 'UPDATE '.$table_client.' SET invoice_no = invoice_no + 1 WHERE client_id = "'.$contract['client_id'].'" ';
+        //finally update division invoice counter
+        $sql = 'UPDATE '.$table_division.' SET invoice_no = invoice_no + 1 WHERE division_id = "'.$contract['division_id'].'" ';
         $db->executeSql($sql,$error_tmp);
-        if($error_tmp !== '') throw new Exception('SERVICE_INVOICE_CREATE: Could not update client invoice no');
+        if($error_tmp !== '') throw new Exception('SERVICE_INVOICE_CREATE: Could not update division invoice no');
 
         return $invoice_id;
     }
 
-    public static function createInvoicePdf($db,ContainerInterface $container,$invoice_id,&$doc_name,&$error)
+    public static function createInvoicePdf_old($db,ContainerInterface $container,$invoice_id,&$doc_name,&$error)
     {
         $error = '';
         $pdf_dir = BASE_UPLOAD.UPLOAD_DOCS;
@@ -377,6 +380,143 @@ class Helpers {
         if($error == '') return true; else return false ;
     }
 
+    public static function createInvoicePdf($db,ContainerInterface $container,$invoice_id,&$doc_name,&$error)
+    {
+        $error = '';
+        $pdf_dir = BASE_UPLOAD.UPLOAD_DOCS;
+        //for custom settings like signature
+        $upload_dir = BASE_UPLOAD.UPLOAD_DOCS;
+
+        $table_items = TABLE_PREFIX.'invoice_item';
+        $system = $container->system;
+        
+        $invoice = self::get($db,TABLE_PREFIX,'contract_invoice',$invoice_id,'invoice_id');
+        $contract = self::get($db,TABLE_PREFIX,'contract',$invoice['contract_id']);
+        $division = self::get($db,TABLE_PREFIX,'division',$contract['division_id']);
+        $location = self::get($db,TABLE_PREFIX,'client_location',$contract['location_id'],'location_id');
+        
+        //get client and all primary contact and location details 
+        $client = self::getClient($db,TABLE_PREFIX,$contract['client_id']);
+
+        $sql = 'SELECT item_id,item_code,item_desc,quantity,units,unit_price,discount,tax,total '.
+               'FROM '.$table_items.' WHERE invoice_id = "'.$db->escapeSql($invoice_id).'" '.
+               'ORDER BY total DESC ';
+        $items = $db->readSqlArray($sql); 
+
+     
+        //invoice_no must be unique
+        $pdf_name = 'INV-'.$invoice['invoice_no'].'.pdf';
+        $doc_name = $pdf_name;
+                
+        $pdf = new InvoicePdf('Portrait','mm','A4');
+        $pdf->AliasNbPages();
+            
+        $pdf->setupLayout(['db'=>$db]);
+
+        //NB: override PDF defaults
+        //NB: h1_title only relevant to header
+        //$pdf->h1_title = array(33,33,33,'B',10,'',5,10,'L','YES',33,33,33,'B',12,20,180); //NO date
+        //$pdf->bg_image = array('images/logo.jpeg',5,140,50,20,'YES'); //NB: YES flag turns off logo image display
+        $pdf->page_margin = array(115,10,10,50);//top,left,right,bottom!!
+        //$pdf->text = array(33,33,33,'',8);
+        $pdf->SetMargins($pdf->page_margin[1],$pdf->page_margin[0],$pdf->page_margin[2]);
+
+        //assign invoice HEADER data 
+        $pdf->addTextElement('business_title',$division['invoice_title']);
+        $pdf->addTextElement('doc_name','Invoice');
+        $pdf->addTextElement('doc_date',$invoice['date']);
+        $pdf->addTextElement('doc_no',$invoice['invoice_no']);
+
+       
+        $pdf->addTextBlock('business_address',$division['invoice_address']);
+        $pdf->addTextBlock('business_contact',$division['invoice_contact']);
+
+        $pdf->addTextBlock('client_detail',$location['address']);
+        $pdf->addTextBlock('client_deliver',$client['location']['INVOICE']['address']);
+
+        $pdf->addTextElement('acc_no',$client['client']['account_code']);
+        $pdf->addTextElement('acc_ref',$contract['client_code']);
+        $pdf->addTextElement('acc_tax_exempt','N');
+        $pdf->addTextElement('acc_tax_ref','');
+        $pdf->addTextElement('acc_sales_code','Exclusive');
+
+        //assign invoice FOOTER data 
+        $pdf->addTextBlock('total_info',$division['invoice_info']); //can be anything but normaly banking data
+        $pdf->addTextElement('total_sub',number_format($invoice['subtotal'],2));
+        $pdf->addTextElement('total_discount',number_format($invoice['discount'],2));
+        $pdf->addTextElement('total_ex_tax',number_format(($invoice['subtotal'] - $invoice['discount']),2));
+        $pdf->addTextElement('total_tax',number_format($invoice['tax'],2));
+        $pdf->addTextElement('total',number_format($invoice['total'],2));
+
+        //NB footer must be set before this
+        $pdf->AddPage();
+
+        $row_h = 5;
+
+        //$pdf->SetY(120);
+        //$pdf->Ln($row_h);
+        $frame_y = $pdf->getY();
+        
+        if(count($items) != 0) {
+            
+            $arr = [];
+            $r = 0;
+            $arr[0][$r] = 'Code';
+            $arr[1][$r] = 'Description';
+            $arr[2][$r] = 'Quantity';
+            $arr[3][$r] = 'Price';
+            $arr[4][$r] = 'Discount';
+            $arr[5][$r] = 'Tax';
+            $arr[6][$r] = 'Total';
+            
+            foreach($items as $item) {
+                $r++;
+                $arr[0][$r] = $item['item_code'];
+                $arr[1][$r] = $item['item_desc'];
+                $arr[2][$r] = number_format($item['quantity'],0).$item['units'];
+                $arr[3][$r] = $item['unit_price'];
+                $arr[4][$r] = $item['discount'];
+                $arr[5][$r] = $item['tax'];
+                $arr[6][$r] = $item['total'];
+            }
+                         
+            $pdf->changeFont('TEXT');
+            //item_id,item_code,item_desc,quantity,units,unit_price,discount,tax,total
+            $col_width = array(20,75,20,20,20,20,25);
+            $col_type = array('','','','DBL2','DBL2','DBL2','DBL2');
+            $table_options['resize_cols'] = true;
+            $table_options['format_header'] = ['line_width'=>0.1,'fill'=>'#FFFFFF','line_color'=>'#000000'];
+            $table_options['format_text'] = ['line_width'=>0.1]; //['line_width'=>-1];
+            $table_options['header_align'] = 'L';
+            $pdf->arrayDrawTable($arr,$row_h,$col_width,$col_type,'L',$table_options);
+        }
+        
+        if($invoice['notes'] != '') {
+            $pdf->MultiCell(0,$row_h,$invoice['notes'],0,'L',0); 
+            $pdf->Ln($row_h);
+        }
+
+        $pdf->changeFont('H2');
+        $pdf->SetLineWidth(.1);
+        $pdf->SetDrawColor(0,0,0);
+        $pos_x = 10;
+        $pos_y = $frame_y;
+        $width = 190;
+        $height = $pdf->GetY() - $frame_y;
+        $pdf->Rect($pos_x,$pos_y,$width,$height,'D');
+                
+        //finally create pdf file
+        $file_path = $pdf_dir.$pdf_name;
+        $pdf->Output($file_path,'F'); 
+
+        if($error === '') {
+            //comment out and then can view pdf in storage/docs withpout uploading to amazon etc
+            self::saveInvoicePdf($db,$container->s3,$invoice_id,$doc_name,$error);  
+        }    
+                
+        if($error == '') return true; else return false ;
+    }
+
     public static function saveInvoicePdf($db,$s3,$invoice_id,$doc_name,&$error) {
         $error_tmp = '';
         $error = '';
@@ -421,8 +561,8 @@ class Helpers {
     }
 
 
-    //email invoice to client
-    public static function sendInvoice($db,ContainerInterface $container,$invoice_id,$mail_to,&$error_str) {
+    //email invoice to client or any other specified email address
+    public static function sendInvoice($db,ContainerInterface $container,$invoice_id,&$mail_to,&$error_str) {
         $error_str = '';
         $error_tmp = '';
         $attach_msg = '';
@@ -432,11 +572,12 @@ class Helpers {
 
         $invoice = self::get($db,TABLE_PREFIX,'contract_invoice',$invoice_id,'invoice_id');
         $contract = self::get($db,TABLE_PREFIX,'contract',$invoice['contract_id']);
-        $client = self::get($db,TABLE_PREFIX,'client',$contract['client_id']);
         $location = self::get($db,TABLE_PREFIX,'client_location',$contract['location_id'],'location_id');
         $contact = self::get($db,TABLE_PREFIX,'client_contact',$contract['contact_id'],'contact_id');
-         
-        if($mail_to === 'DEFAULT') $mail_to = $contact['email'];
+
+        //get client and location and contact defaults         
+        $client = self::getClient($db,TABLE_PREFIX,$contract['client_id']);
+        if($mail_to === 'DEFAULT') $mail_to = $client['contact']['INVOICE']['email'];
                
         //get all files related to invoice
         $attach = array();
@@ -465,14 +606,14 @@ class Helpers {
         //configure and send email
         if($error_str == '') {
             $subject = SITE_NAME.' invoice '.$invoice['invoice_no'];
-            $body = 'Attention: '.$client['name']."\r\n".
+            $body = 'Attention: '.$client['contact']['INVOICE']['name']."\r\n".
                     'Contract: '.$contract['client_code']."\r\n".
                     'Location: '.$location['name']."\r\n\r\n".
                     'Please see attached invoice and any supporting documents.'."\r\n\r\n";
                         
             if($attach_msg != '') $body .= 'All documents attached to this email: '."\r\n".$attach_msg."\r\n";
                         
-            $mail_footer = $system->getDefault('EMAIL_FOOTER','');
+            $mail_footer = $system->getDefault('SRV_EMAIL_FOOTER','');
             $body .= $mail_footer."\r\n";
                         
             $param = ['attach'=>$attach];
@@ -484,6 +625,22 @@ class Helpers {
             
         if($error_str == '') return true; else return false;  
     } 
+
+    public static function getContractCode($db,$table_prefix,$division_id) 
+    {
+        $error = '';
+
+        $division = self::get($db,$table_prefix,'division',$division_id);
+        $no = $division['contract_no'] + 1;
+        $code = $division['contract_prefix'].$no;
+        $sql = 'UPDATE '.$table_prefix.'division SET contract_no = contract_no + 1 '.
+               'WHERE division_id = "'.$db->escapeSql($division_id).'" ';
+        $db->executeSql($sql,$error);
+        if($error !== '') throw new Exception('SERVICE_CONTRACT_CALC: Could not update division contract no');
+
+        return $code;
+    }
+
     //get all or part of a contract details
     public static function getContract($db,$table_prefix,$contract_id,$param = []) 
     {
@@ -583,8 +740,67 @@ class Helpers {
         return $html;
     }
 
+    public static function getClient($db,$table_prefix,$client_id,$param = []) 
+    {
+        $client = [];
 
-    public static function setupClient($db,$table_prefix,$client_id) 
+        if(!isset($param['get'])) $param['get'] = 'ALL';
+
+        $table_client = $table_prefix.'client';
+        $table_category = $table_prefix.'client_category';
+        $table_contact = $table_prefix.'client_contact';
+        $table_location = $table_prefix.'client_location';
+        $table_location_category = $table_prefix.'location_category';
+
+        if($param['get'] === 'ALL' or $param['get'] === 'CLIENT') {
+            $sql = 'SELECT C.client_id,C.category_id,CC.name AS category,C.client_code,C.account_code,C.company_title,C.company_no '.
+                   'FROM '.$table_client.' AS C '.
+                   'JOIN '.$table_category.' AS CC ON(C.category_id = CC.category_id) '.
+                   'WHERE C.client_id = "'.$db->escapeSql($client_id).'" ';
+            $client['client'] = $db->readSqlRecord($sql,0);
+        }
+        
+        //NB: this will only return first ranked contact in each type_id as readsqlArray() overwrites type_id key
+        if($param['get'] === 'ALL' or $param['get'] === 'CONTACT') {
+            $sql = 'SELECT C.type_id,C.contact_id,C.name,C.location_id,L.name AS location,C.position,C.status,'.
+                          'C.cell,C.tel,C.email,C.cell_alt,C.tel_alt,C.email_alt '.
+                   'FROM '.$table_contact.' AS C '.
+                   'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
+                   'WHERE C.client_id = "'.$db->escapeSql($client_id).'" '.
+                   'ORDER BY C.type_id,C.sort DESC ';
+            $client['contact'] = $db->readSqlArray($sql);
+            if(!isset($client['contact']['PHYSICAL'])) {
+                $client['contact']['PHYSICAL'] = ['name'=>'No on premises contact setup'];
+            } 
+            if(!isset($client['contact']['INVOICE'])) {
+                $client['contact']['INVOICE'] = $client['contact']['PHYSICAL'];
+            }
+        }
+
+        if($param['get'] === 'ALL' or $param['get'] === 'LOCATION') {
+            $sql = 'SELECT L.type_id,L.location_id,L.name,C.name AS category,L.status,'.
+                          'L.address,L.size,L.tel,L.email,L.map_lng,L.map_lat '.
+                   'FROM '.$table_location.' AS L '.
+                   'JOIN '.$table_location_category.' AS C ON(L.category_id = C.category_id) '.
+                   'WHERE L.client_id = "'.$db->escapeSql($client_id).'" '.
+                   'ORDER BY L.type_id,L.sort DESC ';
+            $client['location'] = $db->readSqlArray($sql);
+            if(!isset($client['location']['PHYSICAL'])) {
+                $client['location']['PHYSICAL'] = ['name'=>'No physical location setup'];
+            } 
+            if(!isset($client['location']['INVOICE'])) {
+                $client['location']['INVOICE'] = $client['location']['PHYSICAL'];
+            }
+            if(!isset($client['location'][''])) {
+                $client['location']['POSTAL'] = $client['location']['PHYSICAL'];
+            }
+        }
+
+        return $client;
+    }
+
+    //use to create default client location and contact data with $setup values when creating a new client 
+    public static function setupClient($db,$table_prefix,$client_id,$setup = []) 
     {
         $error_tmp = '';
 
@@ -597,16 +813,17 @@ class Helpers {
 
         $client = self::get($db,$table_prefix,'client',$client_id);
 
-        $sql = 'SELECT location_id FROM '.$table_location.' WHERE client_id = "'.$db->escapeSql($client_id).'" ORDER BY sort';
-        $location_id = $db->readSqlValue($sql,0);
-        if($location_id === 0) {
+        $sql = 'SELECT count(*) FROM '.$table_location.' WHERE client_id = "'.$db->escapeSql($client_id).'" ORDER BY sort';
+        $count = $db->readSqlValue($sql);
+        if($count == 0) {
             $data = [];
             $data['category_id'] = $location_category_id;
             $data['client_id'] = $client_id;
             $data['name'] = 'Head office';
-            $data['address'] = $client['address_physical'];
-            $data['tel'] = $client['tel'];
-            $data['email'] = $client['email'];
+            $data['address'] = $setup['address_physical'];
+            $data['tel'] = $setup['contact_tel'];
+            $data['email'] = $setup['contact_email'];
+            $data['type_id'] = 'PHYSICAL';
             $data['sort'] = '10';
             $data['status'] = 'OK';
 
@@ -621,10 +838,12 @@ class Helpers {
             $data = [];
             $data['location_id'] = $location_id;
             $data['client_id'] = $client_id;
-            $data['name'] = $client['name'];
+            $data['name'] = $setup['contact_name'];
             $data['position'] = 'Service manager';
-            $data['email'] = $client['email'];
-            $data['tel'] = $client['tel'];
+            $data['email'] = $setup['contact_email'];
+            $data['tel'] = $setup['contact_tel'];
+            $data['cell'] = $setup['contact_tel'];
+            $data['type_id'] = 'PHYSICAL';
             $data['sort'] = '10';
             $data['status'] = 'OK';
 
@@ -692,5 +911,51 @@ class Helpers {
         
         return $html;
     } 
+
+    public static function invoiceCsvExport($db,$division_id,$date_from,$date_to,$options = [],$error)
+    {
+        $error = '';
+
+
+        if(!isset($options['output'])) $options['output'] = 'BROWSER';
+        if(!isset($options['format'])) $options['format'] = 'CSV';
+        $options['format'] = strtoupper($options['format']);
+        
+        if($division_id === 'ALL') {
+            $error .= 'Cannot run for ALL divisions. Please select an individual division.';
+        } else {
+            $division = self::get($db,TABLE_PREFIX,'division',$division_id);
+            if($division === 0) $error .= 'Invalid Division['.$division_id.'] selected.';
+        }    
+        
+        if($error !== '') return false;
+
+        $doc_name_base = str_replace(' ','_'.$division['name']).'_division_invoices_from_'.
+                         Date::formatDate($date_from).'_to_'.Date::formatDate($date_to).'_on_'.date('Y-m-d');
+
+        $sql = 'SELECT L.lot_id,L.buyer_id,L.lot_no,L.name,L.bid_final,L.weight,L.volume,L.status,U.name AS buyer_name '.
+               'FROM '.TABLE_PREFIX.'lot AS L JOIN '.TABLE_USER.' AS U ON(L.buyer_id = U.user_id) '.
+               'WHERE L.auction_id = "'.$db->escapeSql($auction_id).'" AND L.buyer_id > 0 '.
+               'ORDER BY L.buyer_id,L.lot_no ';
+                    
+        $lots = $db->readSqlArray($sql);
+        if($lots == 0) $error .= 'No auction lots found with a linked buyer id.';
+
+        if($options['format'] === 'HTML') {
+            $html = Html::arrayDumpHtml($lots,['show_key'=>false]);
+        }
+
+        if($options['format'] === 'CSV') {
+            $csv_data = '';
+
+            $doc_name = $doc_name_base.'.csv';
+            //dumps key by default unlike html version
+            $csv_data = Csv::sqlArrayDumpCsv('ID',$lots);
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD');
+            exit();
+        }               
+
+        return $html;
+    }
 
 }

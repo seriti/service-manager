@@ -27,7 +27,7 @@ class Dashboard extends DashboardTool
                         
         if($login_user->getAccessLevel() === 'GOD') {
             $this->addBlock('CONFIG',1,3,'Module Configuration');
-            $this->addItem('CONFIG','Setup Invoices',['link'=>'invoice_setup','icon'=>'setup']);
+            $this->addItem('CONFIG','Setup Module',['link'=>'service_setup','icon'=>'setup']);
             $this->addItem('CONFIG','Setup Database',['link'=>'setup_data','icon'=>'setup']);
         }    
         

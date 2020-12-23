@@ -34,7 +34,7 @@ class ServiceVisit extends Table
         $this->addTableCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'name FROM '.TABLE_PREFIX.'service_feedback WHERE feedback_id']);
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false,'list'=>true]);
 
-        $this->addSql('WHERE','T.status <> "NEW" AND T.status <> "CONFIRMED" ');
+        //$this->addSql('WHERE','T.status <> "NEW" AND T.status <> "CONFIRMED" ');
                
         $this->addSortOrder('T.visit_id DESC','Most recent first','DEFAULT');
 
@@ -51,7 +51,7 @@ class ServiceVisit extends Table
         $this->addSelect('feedback_id','SELECT feedback_id, name FROM '.TABLE_PREFIX.'service_feedback ORDER BY type_id, sort');
         
         //$status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRM booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
-        $status = ['COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
+        $status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRMED booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
         $this->addSelect('status',['list'=>$status,'list_assoc'=>true]);
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'VST','max_no'=>100,

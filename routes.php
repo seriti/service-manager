@@ -40,6 +40,7 @@ $app->group('/admin', function () {
         $this->any('/service_errand', App\Service\ServiceErrandController::class);
         $this->any('/service_feedback', App\Service\ServiceFeedbackController::class);
         $this->any('/service_item', App\Service\ServiceItemController::class);
+        $this->any('/service_setup', App\Service\ServiceSetupController::class);
         $this->any('/item_units', App\Service\ItemUnitsController::class);
         $this->any('/service_price', App\Service\ServicePriceController::class);
         $this->any('/service_round', App\Service\ServiceRoundController::class);
@@ -49,7 +50,6 @@ $app->group('/admin', function () {
         $this->any('/invoice', App\Service\InvoiceController::class);
         $this->any('/invoice_file', App\Service\InvoiceFileController::class);
         $this->any('/invoice_item', App\Service\InvoiceItemController::class);
-        $this->any('/invoice_setup', App\Service\InvoiceSetupController::class);
         $this->any('/invoice_wizard', App\Service\InvoiceWizardController::class);
         $this->any('/invoice_wizard_item', App\Service\InvoiceWizardItemController::class);
         

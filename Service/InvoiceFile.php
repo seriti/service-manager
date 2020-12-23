@@ -28,8 +28,8 @@ class InvoiceFile extends Upload
 
         //$this->addAction('delete');
 
-        $access['read_only'] = true;                         
-        $this->modifyAccess($access);
+        //$access['read_only'] = true;
+        //$this->modifyAccess($access);
     }
 }
 ?>

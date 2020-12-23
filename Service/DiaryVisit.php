@@ -69,7 +69,7 @@ class DiaryVisit Extends Record
         $this->addRecordCol(array('id'=>'time_to','type'=>'TIME','title'=>'Time to','required'=>true));
         $this->addRecordCol(array('id'=>'no_assistants','type'=>'INTEGER','title'=>'No. assistants','edit'=>true));
         $this->addRecordCol(array('id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'name FROM '.TABLE_PREFIX.'service_feedback WHERE feedback_id','edit'=>true));
-        $this->addRecordCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no']);
+        $this->addRecordCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no','required'=>false]);
         $this->addRecordCol(array('id'=>'status','type'=>'STRING','title'=>'Status','edit'=>true));
         $this->addRecordCol(array('id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false));
 
