@@ -166,7 +166,7 @@ class InvoiceWizard extends Wizard
                     if($contract['inv_create']) {
                         $invoice_id = Helpers::saveInvoice($this->db,$this->table_prefix,$id,$contract['inv_note'],$error_tmp);   
                         if($error_tmp !== '') {
-                            $contract['inv_message'] = $error_temp;
+                            $contract['inv_message'] = $error_tmp;
                         } else {
                             Helpers::createInvoicePdf($this->db,$this->container,$invoice_id,$doc_name,$error_tmp);
                             if($error_tmp !== '') {

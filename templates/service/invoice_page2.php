@@ -34,7 +34,7 @@ $visit_days = $data['visit_days'];
     echo '<table id="item_table" class="table  table-striped table-bordered table-hover table-condensed">'.
          '<tr><th>Contract ID</th><th>Code</th><th>Type</th><th>Last invoice</th><th>Subtotal</th><th>Discount</th><th>Tax</th><th>Total</th><th>Notes</th><th>Invoice Action</th><th>Process invoice</th><th>Del.</th></tr>';
     
-    $action = ['NONE'=>'Only create invoice trecord','EMAIL'=>'Create invoice PDF & email to client'];
+    $action = ['NONE'=>'Only create invoice PDF','EMAIL'=>'Create invoice PDF & email to client'];
     foreach($data['contracts'] as $id => $contract) {
         
         $name_note = 'note_'.$id;

@@ -186,8 +186,8 @@ class Helpers {
         $table_item = $table_prefix.'invoice_item';
 
         $contract = self::get($db,$table_prefix,'contract',$contract_id);
-        $division = self::get($db,$table_prefix,'division',$contract['client_id']);
-
+        $division = self::get($db,$table_prefix,'division',$contract['division_id']);
+       
         $invoice_no = $division['invoice_prefix'].($division['invoice_no']+1);
 
         //check invoice_no unique
@@ -437,8 +437,8 @@ class Helpers {
         $pdf->addTextElement('acc_no',$client['client']['account_code']);
         $pdf->addTextElement('acc_ref',$contract['client_code']);
         $pdf->addTextElement('acc_tax_exempt','N');
-        $pdf->addTextElement('acc_tax_ref','');
-        $pdf->addTextElement('acc_sales_code','Exclusive');
+        $pdf->addTextElement('acc_tax_ref',$client['client']['tax_reference']);
+        $pdf->addTextElement('acc_sales_code',$client['client']['sales_code']);
 
         //assign invoice FOOTER data 
         $pdf->addTextBlock('total_info',$division['invoice_info']); //can be anything but normaly banking data
@@ -753,7 +753,8 @@ class Helpers {
         $table_location_category = $table_prefix.'location_category';
 
         if($param['get'] === 'ALL' or $param['get'] === 'CLIENT') {
-            $sql = 'SELECT C.client_id,C.category_id,CC.name AS category,C.client_code,C.account_code,C.company_title,C.company_no '.
+            $sql = 'SELECT C.client_id,C.category_id,CC.name AS category,C.client_code,C.account_code,'.
+                          'C.company_title,C.company_no,C.tax_reference,C.sales_code '.
                    'FROM '.$table_client.' AS C '.
                    'JOIN '.$table_category.' AS CC ON(C.category_id = CC.category_id) '.
                    'WHERE C.client_id = "'.$db->escapeSql($client_id).'" ';

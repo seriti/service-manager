@@ -21,6 +21,10 @@ class SetupData extends SetupModuledata
                                 `client_code` varchar(64) NOT NULL,
                                 `account_code` varchar(64) NOT NULL,
                                 `name` varchar(250) NOT NULL,
+                                `company_title` varchar(64) NOT NULL,
+                                `company_no` varchar(64) NOT NULL,
+                                `tax_reference` varchar(64) NOT NULL,
+                                `sales_code` varchar(64) NOT NULL,
                                 `status` varchar(64) NOT NULL,
                                 PRIMARY KEY (`client_id`)
                             ) ENGINE=InnoDB DEFAULT CHARSET=utf8'); 

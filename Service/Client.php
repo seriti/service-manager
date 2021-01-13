@@ -27,6 +27,10 @@ class Client extends Table
                             'hint'=>'Official company title for use on invoices and other documents']);
         $this->addTableCol(['id'=>'company_no','type'=>'STRING','title'=>'Company Reg. No.','required'=>false,
                             'hint'=>'Official company registration No. for use on invoices and other documents']);
+        $this->addTableCol(['id'=>'tax_reference','type'=>'STRING','title'=>'Tax reference','required'=>false,
+                            'hint'=>'Official tax reference for use on invoices, normaly VAT No.']);
+        $this->addTableCol(['id'=>'sales_code','type'=>'STRING','title'=>'Sales code','required'=>false,
+                            'hint'=>'Sales code for use on invoices, not required']);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
       
         $this->addSortOrder('T.client_id DESC','Most recent first','DEFAULT');
@@ -95,6 +99,21 @@ class Client extends Table
             Validate::string('Primary postal address',0,1000,$_POST['address_postal'],$error_tmp);
             if($error_tmp !== '') $this->addError($error_tmp);
         } 
+
+        if($data['client_code'] != '') {
+            $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
+                   'WHERE client_code = "'.$this->db->escapeSql($data['client_code']).'" AND client_id <> "'.$this->db->escapeSql($id).'" ';
+            $count = $this->db->readSqlValue($sql);
+            if($count != 0) $error .= 'Client code['.$data['client_code'].'] is NOT unique. Another client has been assigned that code.';
+        }
+
+        if($data['account_code'] != '') {
+            $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
+                   'WHERE account_code = "'.$this->db->escapeSql($data['account_code']).'" AND client_id <> "'.$this->db->escapeSql($id).'" ';
+            $count = $this->db->readSqlValue($sql);
+            if($count != 0) $error .= 'Client account code['.$data['account_code'].'] is NOT unique. Another client has been assigned that account code.';
+        }
+        
 
 
     }
