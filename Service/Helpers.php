@@ -431,7 +431,8 @@ class Helpers {
         $pdf->addTextBlock('business_address',$division['invoice_address']);
         $pdf->addTextBlock('business_contact',$division['invoice_contact']);
 
-        $pdf->addTextBlock('client_detail',$location['address']);
+        $client_detail = $client['client']['company_title']."\n".$location['address'];
+        $pdf->addTextBlock('client_detail',$client_detail);
         $pdf->addTextBlock('client_deliver',$client['location']['INVOICE']['address']);
 
         $pdf->addTextElement('acc_no',$client['client']['account_code']);
@@ -577,8 +578,16 @@ class Helpers {
 
         //get client and location and contact defaults         
         $client = self::getClient($db,TABLE_PREFIX,$contract['client_id']);
-        if($mail_to === 'DEFAULT') $mail_to = $client['contact']['INVOICE']['email'];
-               
+        if($mail_to === 'DEFAULT') {
+            if($client['contact']['INVOICE']['email'] === '') {
+                $error_str .= 'Client contact['.$client['contact']['INVOICE']['name'].'] does not have an email assigned!';
+            } else {
+                $mail_to = $client['contact']['INVOICE']['email'];
+            }
+        }    
+        
+        if($error_str !== '') return false;  
+
         //get all files related to invoice
         $attach = array();
         $attach_file = array();
@@ -782,7 +791,7 @@ class Helpers {
             $sql = 'SELECT L.type_id,L.location_id,L.name,C.name AS category,L.status,'.
                           'L.address,L.size,L.tel,L.email,L.map_lng,L.map_lat '.
                    'FROM '.$table_location.' AS L '.
-                   'JOIN '.$table_location_category.' AS C ON(L.category_id = C.category_id) '.
+                   'LEFT JOIN '.$table_location_category.' AS C ON(L.category_id = C.category_id) '.
                    'WHERE L.client_id = "'.$db->escapeSql($client_id).'" '.
                    'ORDER BY L.type_id,L.sort DESC ';
             $client['location'] = $db->readSqlArray($sql);
@@ -853,7 +862,7 @@ class Helpers {
         }
     }
     
-    public static function roundDailyDiary($db,$table_prefix,$round_id,$status,$date_from,$date_to,$options = [],&$error)
+    public static function roundDailyDiary($db,$table_prefix,$round_id,$user_id_tech,$status,$date_from,$date_to,$options = [],&$error)
     {
         $error = '';
 
@@ -862,15 +871,19 @@ class Helpers {
         $table_visit = $table_prefix.'contract_visit';
         $table_contract = $table_prefix.'contract';
         $table_client = $table_prefix.'client';
+        $table_user = TABLE_USER;
                 
         $calendar = new Calendar();
                 
-        $sql = 'SELECT V.visit_id,V.contract_id,V.user_id_booked,V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
+        $sql = 'SELECT V.visit_id,V.contract_id,V.user_id_booked,V.user_id_tech,U.name AS technician, '.
+                      'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
                       'C.client_code, C.client_id,CL.name AS client '.
                'FROM '.$table_visit.' AS V '.
                      'JOIN '.$table_contract.' AS C ON(V.contract_id = C.contract_id) '.
                      'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
+                     'LEFT JOIN '.$table_user.' AS U ON(V.user_id_tech = U.user_id) '.
                'WHERE C.round_id = "'.$db->escapeSql($round_id).'" AND V.date_visit >= "'.$db->escapeSql($date_from).'" AND V.date_visit <= "'.$db->escapeSql($date_to).'" ';
+        if($user_id_tech != 'ALL') $sql .= ' AND V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" ';
         if($status != 'ALL') $sql .= ' AND V.status = "'.$db->escapeSql($status).'" ';
         
         $entries = $db->readSqlArray($sql,false);
@@ -900,7 +913,8 @@ class Helpers {
         if(!isset($options['width'])) $options['width'] = 400;
         if(!isset($options['height'])) $options['height'] = 600;
         
-        $str = $entry['client_code'].': '.$entry['client'].' '.$entry['status'];
+        $str = $entry['client_code'].': '.$entry['client'].' - '.$entry['status'];
+        if($entry['user_id_tech'] != 0) $str .= '('.$entry['technician'].')';
 
         if($options['link']) {
             if($entry['status'] === 'NEW') $mode = 'mode=edit&'; else $mode = '';  
@@ -912,51 +926,4 @@ class Helpers {
         
         return $html;
     } 
-
-    public static function invoiceCsvExport($db,$division_id,$date_from,$date_to,$options = [],$error)
-    {
-        $error = '';
-
-
-        if(!isset($options['output'])) $options['output'] = 'BROWSER';
-        if(!isset($options['format'])) $options['format'] = 'CSV';
-        $options['format'] = strtoupper($options['format']);
-        
-        if($division_id === 'ALL') {
-            $error .= 'Cannot run for ALL divisions. Please select an individual division.';
-        } else {
-            $division = self::get($db,TABLE_PREFIX,'division',$division_id);
-            if($division === 0) $error .= 'Invalid Division['.$division_id.'] selected.';
-        }    
-        
-        if($error !== '') return false;
-
-        $doc_name_base = str_replace(' ','_'.$division['name']).'_division_invoices_from_'.
-                         Date::formatDate($date_from).'_to_'.Date::formatDate($date_to).'_on_'.date('Y-m-d');
-
-        $sql = 'SELECT L.lot_id,L.buyer_id,L.lot_no,L.name,L.bid_final,L.weight,L.volume,L.status,U.name AS buyer_name '.
-               'FROM '.TABLE_PREFIX.'lot AS L JOIN '.TABLE_USER.' AS U ON(L.buyer_id = U.user_id) '.
-               'WHERE L.auction_id = "'.$db->escapeSql($auction_id).'" AND L.buyer_id > 0 '.
-               'ORDER BY L.buyer_id,L.lot_no ';
-                    
-        $lots = $db->readSqlArray($sql);
-        if($lots == 0) $error .= 'No auction lots found with a linked buyer id.';
-
-        if($options['format'] === 'HTML') {
-            $html = Html::arrayDumpHtml($lots,['show_key'=>false]);
-        }
-
-        if($options['format'] === 'CSV') {
-            $csv_data = '';
-
-            $doc_name = $doc_name_base.'.csv';
-            //dumps key by default unlike html version
-            $csv_data = Csv::sqlArrayDumpCsv('ID',$lots);
-            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD');
-            exit();
-        }               
-
-        return $html;
-    }
-
 }

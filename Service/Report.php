@@ -20,6 +20,9 @@ class Report extends ReportTool
         $this->always_list_reports = true;
         $this->submit_title = 'View Report';
 
+        $param = ['input'=>['select_round','select_date','select_technician']];
+        $this->addReport('TECH_WORKSHEET','Technician daily round worksheet PDF',$param); 
+
         $param = ['input'=>['select_division','select_date_period','select_format']];
         $this->addReport('INVOICE_EXPORT','Division Invoice Pastel-CSV export',$param); 
 
@@ -29,10 +32,10 @@ class Report extends ReportTool
         
         $this->addInput('select_division','');
         //$this->addInput('select_contract_type','');
-        //$this->addInput('select_round','');
+        $this->addInput('select_round','');
         $this->addInput('select_date_period','');
-        //$this->addInput('select_month_period','');
-        //$this->addInput('select_visit_status','');
+        $this->addInput('select_date','');
+        $this->addInput('select_technician','');
         $this->addInput('select_format',''); 
     }
 
@@ -67,7 +70,13 @@ class Report extends ReportTool
             $html .= 'Round:&nbsp;'.Form::sqlList($sql,$this->db,'round_id',$round_id,$param);
         }
 
-        
+         if($id === 'select_technician') {
+            $param = [];
+            $param['class'] = 'form-control input-medium input-inline';
+            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE status <> "HIDE" ORDER BY name'; 
+            if(isset($form['user_id_tech'])) $user_id_tech = $form['user_id_tech']; else $user_id_tech = '';
+            $html .= 'Technician:&nbsp;'.Form::sqlList($sql,$this->db,'user_id_tech',$user_id_tech,$param);
+        }
         
         if($id === 'select_month_period') {
             $past_years = 10;
@@ -87,6 +96,13 @@ class Report extends ReportTool
             $html .= Form::monthsList($to_month,'to_month',$param);
             $html .= Form::yearsList($to_year,$past_years,$future_years,'to_year',$param);
         }
+
+        if($id === 'select_date') {
+            $param = [];
+            $param['class'] = $this->classes['date'].' input-inline';
+            if(isset($form['date'])) $date = $form['date']; else $date = date('Y-m-d');
+            $html .= 'Date:&nbsp;'.Form::textInput('date',$date,$param);
+        }  
 
         if($id === 'select_date_period') {
             $param = [];
@@ -126,6 +142,11 @@ class Report extends ReportTool
         $options = [];
         $options['format'] = $form['format'];
         
+        if($id === 'TECH_WORKSHEET') {
+            $html = HelpersReport::dailyTechWorksheet($this->db,$form['round_id'],$form['date'],$form['user_id_tech'],$options,$error);
+            if($error !== '') $this->addError($error);
+        }
+
         if($id === 'INVOICE_EXPORT') {
             $html = HelpersReport::invoiceCsvExport($this->db,$form['division_id'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);

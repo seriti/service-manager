@@ -20,12 +20,13 @@ class Diary extends ReportTool
         $this->always_list_reports = false;
         $this->submit_title = 'View Diary';
 
-        $param = ['input'=>['select_round','select_date_period','select_status']];
+        $param = ['input'=>['select_round','select_technician','select_date_period','select_status']];
         $this->addReport('DIARY_DAYS','Daily round diary',$param); 
        
         
         
         $this->addInput('select_round','');
+        $this->addInput('select_technician','');
         $this->addInput('select_date_period','');
         $this->addInput('select_month_period','');
         $this->addInput('select_status','');
@@ -43,6 +44,15 @@ class Diary extends ReportTool
             $sql = 'SELECT round_id,name FROM '.TABLE_PREFIX.'service_round WHERE status <> "HIDE" ORDER BY sort'; 
             if(isset($form['round_id'])) $round_id = $form['round_id']; else $round_id = '';
             $html .= 'Round:&nbsp;'.Form::sqlList($sql,$this->db,'round_id',$round_id,$param);
+        }
+
+        if($id === 'select_technician') {
+            $param = [];
+            $param['class'] = 'form-control input-medium input-inline';
+            $param['xtra'] = ['ALL'=>'All technicians'];
+            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE status <> "HIDE" ORDER BY name'; 
+            if(isset($form['user_id_tech'])) $user_id_tech = $form['user_id_tech']; else $user_id_tech = 'ALL';
+            $html .= 'Technician:&nbsp;'.Form::sqlList($sql,$this->db,'user_id_tech',$user_id_tech,$param);
         }
 
         if($id === 'select_month_period') {
@@ -96,15 +106,22 @@ class Diary extends ReportTool
         
         
         if($id === 'DIARY_DAYS') {
-            $html = Helpers::roundDailyDiary($this->db,TABLE_PREFIX,$form['round_id'],$form['status'],$form['date_from'],$form['date_to'],$options,$error);
+            $html = Helpers::roundDailyDiary($this->db,TABLE_PREFIX,$form['round_id'],$form['user_id_tech'],$form['status'],$form['date_from'],$form['date_to'],$options,$error);
             //NB: error should not stop display of calendar
             if($error !== '') $this->addMessage($error);
 
             $round = Helpers::get($this->db,TABLE_PREFIX,'service_round',$form['round_id'],'round_id'); 
             $href = "javascript:open_popup('diary_visit?mode=new&round_id=".$form['round_id']."',400,600)";
+
+            if($form['user_id_tech'] === 'ALL') {
+                $tech_str = 'for <strong>All</strong> technicians';
+            } else {
+                $user = $this->container->user->getUser('ID',$form['user_id_tech']);
+                $tech_str = 'for technician <strong>'.$user['name'].'</strong>';
+            }
             
             $title = '<h2><a href="'.$href.'"><input type="button" value="Add an entry" class="'.$this->classes['button'].'"></a> '.
-                     $this->status_arr[$form['status']].' on <strong>'.$round['name'].'</strong> round from <strong>'.Date::formatDate($form['date_from']).'</strong> to <strong>'.Date::formatDate($form['date_to']).'</strong>'.
+                     $this->status_arr[$form['status']].' on <strong>'.$round['name'].'</strong> round from <strong>'.Date::formatDate($form['date_from']).'</strong> to <strong>'.Date::formatDate($form['date_to']).'</strong> '.$tech_str;
                      '</h2>';
 
             

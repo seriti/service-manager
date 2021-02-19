@@ -3,9 +3,13 @@ namespace App\Service;
 
 use Seriti\Tools\TABLE_USER;
 use Seriti\Tools\Table;
-//use Seriti\Tools\Date;
-//use Seriti\Tools\Form;
-//use Seriti\Tools\Secure;
+use Seriti\Tools\Date;
+use Seriti\Tools\Form;
+use Seriti\Tools\Secure;
+use Seriti\Tools\Audit;
+use Seriti\Tools\Validate;
+
+use App\Service\Helpers;
 
 class Contract extends Table
 {
@@ -36,7 +40,8 @@ class Contract extends Table
         $this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Contract code','new'=>'CALCULATE',
                             'hint'=>'A unique code used to identify contract to client. CALCULATE default will increment division contract counter']);
         $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'Location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);
-        $this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'name FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
+        $this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'CONCAT(name,"-",contact_id) FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
+        $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service Round','join'=>'name FROM '.TABLE_PREFIX.'service_round WHERE round_id']);
         
         
         $this->addTableCol(['id'=>'agent_id','type'=>'INTEGER','title'=>'Agent','join'=>'name FROM '.TABLE_PREFIX.'agent WHERE agent_id']);
@@ -61,10 +66,10 @@ class Contract extends Table
             $this->addTableCol(['id'=>'price_visit','type'=>'DECIMAL','title'=>'Price per visit']); 
             $this->addTableCol(['id'=>'price_annual_pct','type'=>'DECIMAL','title'=>'Price annual pct','new'=>0]);  
 
-            $search = ['contract_id','division_id','client_id','client_code','contact_id','agent_id','location_id',
+            $search = ['contract_id','division_id','client_id','client_code','contact_id','round_id','agent_id',
                        'user_id_responsible','user_id_sold','user_id_signed','user_id_checked','signed_by',
                        'date_signed','date_renew','no_months','pay_method_id',
-                       'visit_day','price','price_annual_pct','notes_admin','notes_client','status'];
+                       'visit_day_id','price','price_annual_pct','notes_admin','notes_client','status'];
         }
 
         if($param['type'] === 'SINGLE') {
@@ -72,7 +77,7 @@ class Contract extends Table
             $this->addTableCol(['id'=>'discount','type'=>'DECIMAL','title'=>'Discount','hint'=>'value less than 50 assumed to be percentage discount','new'=>'0']);
             $this->addTableCol(['id'=>'time_estimate','type'=>'INTEGER','title'=>'Time estimate(minutes)','new'=>60]);
 
-            $search = ['contract_id','division_id','client_id','client_code','contact_id','agent_id','location_id',
+            $search = ['contract_id','division_id','client_id','client_code','contact_id','round_id','agent_id',
                        'user_id_responsible','user_id_sold','user_id_signed','user_id_checked','signed_by',
                        'date_signed','pay_method_id',
                        'price','notes_admin','notes_client','status'];
@@ -81,7 +86,6 @@ class Contract extends Table
         $this->addTableCol(['id'=>'warranty_months','type'=>'INTEGER','title'=>'Warranty months','new'=>12]);
         $this->addTableCol(['id'=>'no_assistants','type'=>'INTEGER','title'=>'No assistants required','new'=>1]);
         $this->addTableCol(['id'=>'pay_method_id','type'=>'INTEGER','title'=>'Payment method','join'=>'name FROM '.TABLE_PREFIX.'pay_method WHERE pay_method_id']);
-        $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service Round','join'=>'name FROM '.TABLE_PREFIX.'service_round WHERE round_id']);
         $this->addTableCol(['id'=>'notify_prior','type'=>'BOOLEAN','title'=>'Notify prior']);
 
         $this->addTableCol(['id'=>'notes_admin','type'=>'TEXT','title'=>'Admin notes','required'=>false,'list'=>false]);
@@ -92,6 +96,8 @@ class Contract extends Table
 
         $this->addSortOrder('T.contract_id DESC','Most recent first','DEFAULT');
 
+        $this->addAction(['type'=>'check_box','text'=>'']);
+
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
         //popups
@@ -99,18 +105,19 @@ class Contract extends Table
         $this->addAction(['type'=>'popup','text'=>'Visits','url'=>'contract_visit','mode'=>'view','width'=>600,'height'=>600]);
 
         
-        $search_rows = 4;           
+        $search_rows = 5;           
         $this->addSearch($search,['rows'=>$search_rows]);
 
         
         $this->addSelect('division_id','SELECT division_id, name FROM '.TABLE_PREFIX.'division ORDER BY sort');
         $this->addSelect('client_id','SELECT client_id, name FROM '.TABLE_PREFIX.'client ORDER BY name');
-        $this->addSelect('location_id','SELECT location_id, name FROM '.TABLE_PREFIX.'client_location ORDER BY sort');
+        //$this->addSelect('location_id','SELECT location_id, name FROM '.TABLE_PREFIX.'client_location ORDER BY sort');
+        $this->addSelect('location_id','SELECT "0","Unknown"'); //just a dummy for modification by onchange
         $this->addSelect('agent_id','SELECT agent_id, name FROM '.TABLE_PREFIX.'agent ORDER BY sort');
         $this->addSelect('pay_method_id','SELECT method_id, name FROM '.TABLE_PREFIX.'pay_method ORDER BY sort');
 
         $this->addSelect('contact_id','SELECT contact_id, name FROM '.TABLE_PREFIX.'client_contact ORDER BY name');
-        $this->addSelect('round_id','SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort');
+        $this->addSelect('round_id','(SELECT "0","No round assigned") UNION ALL (SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort)');
         $this->addSelect('visit_day_id','SELECT day_id, name FROM '.TABLE_PREFIX.'service_day ORDER BY sort');
 
         $sql = 'SELECT '.$this->user_cols['id'].','.$this->user_cols['name'].' FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" ORDER BY '.$this->user_cols['name'];
@@ -136,7 +143,7 @@ class Contract extends Table
             $client = Helpers::get($this->db,TABLE_PREFIX,'client',$value);
             $value = $client['name'];
             if($client['email'] !== '') $value .= '<br/><a href="mailto:'.$client['email'].'">'.$client['email'].'</a>';
-            if($client['tel'] !== '') $value .= '<br/>Tel: '.$client['tel'];
+            if(trim($client['tel']) !== '') $value .= '<br/>Tel: '.$client['tel'];
 
         }
 
@@ -157,6 +164,146 @@ class Contract extends Table
         if($count != 0) $error .= 'Client code['.$data['client_code'].'] is NOT unique to contract. You must enter a client code that has not been used before.';
             
 
+    }
+
+    protected function viewTableActions() {
+        $html = '';
+        $list = array();
+            
+        $status_set = 'NEW';
+        $date_set = date('Y-m-d');
+        
+        if(!$this->access['read_only']) {
+            $list['SELECT'] = 'Action for selected '.$this->row_name_plural;
+            $list['ROUND_CHANGE'] = 'Change Service round.';
+            $list['STATUS_CHANGE'] = 'Change contract Status.';
+        }  
+        
+        if(count($list) != 0){
+            $html .= '<span style="padding:8px;"><input type="checkbox" id="checkbox_all"></span> ';
+            $param['class'] = 'form-control input-medium input-inline';
+            $param['onchange'] = 'javascript:change_table_action()';
+            $action_id = '';
+            $status_change = 'NONE';
+            $round_id = '';
+            
+            $html .= Form::arrayList($list,'table_action',$action_id,true,$param);
+            
+            //javascript to show collection list depending on selecetion      
+            $html .= '<script type="text/javascript">'.
+                     '$("#checkbox_all").click(function () {$(".checkbox_action").prop(\'checked\', $(this).prop(\'checked\'));});'.
+                     'function change_table_action() {'.
+                     'var table_action = document.getElementById(\'table_action\');'.
+                     'var action = table_action.options[table_action.selectedIndex].value; '.
+                     'var status_select = document.getElementById(\'status_select\');'.
+                     'var round_select = document.getElementById(\'round_select\');'.
+                     'status_select.style.display = \'none\'; '.
+                     'round_select.style.display = \'none\'; '.
+                     'if(action==\'STATUS_CHANGE\') status_select.style.display = \'inline\';'.
+                     'if(action==\'ROUND_CHANGE\') round_select.style.display = \'inline\';'.
+                     '}'.
+                     '</script>';
+            
+            $param = array();
+            $param['class'] = 'form-control input-small input-inline';
+            //$param['class']='form-control col-sm-3';
+            $html .= '<span id="status_select" style="display:none"> status&raquo;'.
+                     Form::arrayList($this->status,'status_change',$status_change,true,$param).
+                     '</span>'; 
+            
+            $sql = 'SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort';
+            //$param['class'] = 'form-control input-medium input-inline';       
+            $html .= '<span id="round_select" style="display:none"> Round&raquo;'.
+                     Form::sqlList($sql,$this->db,'round_id',$round_id,$param).
+                     '</span>';
+                    
+            $html .= '&nbsp;<input type="submit" name="action_submit" value="Apply action to selected '.
+                     $this->row_name_plural.'" class="btn btn-primary">';
+        }  
+        
+        return $html; 
+    }
+  
+    //update multiple records based on selected action
+    protected function updateTable() {
+        $error_str = '';
+        $error_tmp = '';
+        $message_str = '';
+        $audit_str = '';
+        $audit_count = 0;
+        $html = '';
+            
+        $action = Secure::clean('basic',$_POST['table_action']);
+        if($action === 'SELECT') {
+            $this->addError('You have not selected any action to perform on '.$this->row_name_plural.'!');
+        } else {
+            if($action === 'STATUS_CHANGE') {
+                $status_change = Secure::clean('alpha',$_POST['status_change']);
+                $audit_str = 'Status change['.$status_change.'] ';
+                if($status_change === 'NONE') $this->addError('You have not selected a valid status['.$status_change.']!');
+            }
+            
+            if($action === 'ROUND_CHANGE') {
+                $round_id = Secure::clean('integer',$_POST['round_id']);
+                $audit_str = 'Round change['.$round_id.'] ';
+                $round = Helpers::get($this->db,TABLE_PREFIX,'service_round',$round_id,'round_id');
+                if($round == 0) $this->addError('Invalid service round ID['.$round_id.']!');
+
+            }
+            
+            if(!$this->errors_found) {     
+                foreach($_POST as $key => $value) {
+                    if(substr($key,0,8) === 'checked_') {
+                        $contract_id = substr($key,8);
+                        $audit_str .= 'contract ID['.$contract_id.'] ';
+                                            
+                        if($action === 'STATUS_CHANGE') {
+                            $sql = 'UPDATE '.$this->table.' SET status = "'.$this->db->escapeSql($status_change).'" '.
+                                   'WHERE contract_id = "'.$this->db->escapeSql($contract_id).'" ';
+                            $this->db->executeSql($sql,$error_tmp);
+                            if($error_tmp === '') {
+                                $message_str = 'Status set['.$status_change.'] for Contract ID['.$contract_id.'] ';
+                                $audit_str .= ' success!';
+                                $audit_count++;
+                                
+                                $this->addMessage($message_str);                
+                            } else {
+                                $this->addError('Could not update status for Contract['.$contract_id.']: '.$error_tmp);                
+                            }  
+                        }
+
+                        if($action === 'ROUND_CHANGE') {
+                            $sql = 'UPDATE '.$this->table.' SET round_id = "'.$this->db->escapeSql($round_id).'" '.
+                                   'WHERE contract_id = "'.$this->db->escapeSql($contract_id).'" ';
+                            $this->db->executeSql($sql,$error_tmp);
+                            if($error_tmp === '') {
+                                $message_str = 'Round set['.$round['name'].'] for Contract ID['.$contract_id.'] ';
+                                $audit_str .= ' success!';
+                                $audit_count++;
+                                
+                                $this->addMessage($message_str);                
+                            } else {
+                                $this->addError('Could not update status for Contract ID['.$contract_id.']: '.$error_tmp);                
+                            }  
+                        }
+                        
+                        
+                    }   
+                }  
+              
+            }  
+        }  
+        
+        //audit any updates except for deletes as these are already audited 
+        if($audit_count != 0 and $action != 'DELETE') {
+            $audit_action = $action.'_'.strtoupper($this->table);
+            Audit::action($this->db,$this->user_id,$audit_action,$audit_str);
+        }  
+            
+        $this->mode = 'list';
+        $html .= $this->viewTable();
+            
+        return $html;
     }
     //protected function afterUpdate($id,$context,$data) {}
     //protected function beforeDelete($id,&$error) {}

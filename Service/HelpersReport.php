@@ -20,10 +20,211 @@ use Seriti\Tools\AJAX_ROUTE;
 
 use Psr\Container\ContainerInterface;
 
+use App\Service\Helpers;
+
 
 //static functions for service module
 class HelpersReport {
     
+    public static function dailyTechWorksheet($db,$round_id,$date,$user_id_tech,$options = [],&$error)
+    {
+        $error = '';
+        $table_prefix = TABLE_PREFIX;
+        
+        if(!isset($options['output'])) $options['output'] = 'BROWSER';
+        
+        /*
+        if(!isset($options['format'])) $options['format'] = 'PDF';
+        $options['format'] = strtoupper($options['format']);
+        if($options['format'] !== 'PDF') {
+            $error .= 'Format '.$options['format'].' NOT available.';
+        } 
+        */
+
+        $table_visit = $table_prefix.'contract_visit';
+        $table_category = $table_prefix.'visit_category';
+        $table_contract = $table_prefix.'contract';
+        $table_location = $table_prefix.'client_location';
+        $table_client = $table_prefix.'client';
+        $table_contact = $table_prefix.'client_contact';
+        $table_user = TABLE_USER;
+
+        $round = helpers::get($db,$table_prefix,'service_round',$round_id,'round_id');
+        if($round == 0) $error .= 'Invalid round ID['.$round_id.']';
+
+        $technician = helpers::get($db,'',$table_user,$user_id_tech,'user_id');
+        if($round == 0) $error .= 'Invalid Technician user ID['.$user_id_tech.']';
+        
+        //get all confirmed visits        
+        $sql = 'SELECT V.visit_id,V.contract_id,V.user_id_booked,U.name AS booked_by,V.category_id,VC.name AS category, '.
+                      'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
+                      'C.client_code, C.notes_admin,C.notes_client,C.client_id,CL.name AS client,C.location_id,L.name AS location,L.address,  '.
+                      'C.contact_id,CN.name AS contact,CN.position AS contact_position,CN.tel,CN.tel_alt,CN.cell,CN.cell_alt '.
+               'FROM '.$table_visit.' AS V '.
+                     'LEFT JOIN '.$table_category.' AS VC ON(V.category_id = VC.category_id) '.   
+                     'JOIN '.$table_contract.' AS C ON(V.contract_id = C.contract_id) '.
+                     'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
+                     'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
+                     'JOIN '.$table_contact.' AS CN ON(C.contact_id = CN.contact_id) '.
+                     'LEFT JOIN '.$table_user.' AS U ON(V.user_id_booked = U.user_id) '.
+               'WHERE C.round_id = "'.$db->escapeSql($round_id).'" AND V.status = "CONFIRMED" AND '.
+                     'V.date_visit = "'.$db->escapeSql($date).'" AND '.
+                     'V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" '.
+               'ORDER BY V.time_from';
+
+        $visits = $db->readSqlArray($sql,false);
+        if($visits == 0) $error .= 'No CONFIRMED diary visits found for round and technician on date '.$date;
+        
+        if($error !== '') return false;
+
+        $base_doc_name = 'Worksheet_'.$round['name'].'_'.$date.'_'.$technician['name'];
+        $page_title = 'Round: '.$round['name'].' for date '.Date::formatDate($date).' & technician: '.$technician['name'];
+        
+        //block table parameters
+        $col_width=array(30,80,80);
+        $col_type=array('','','');
+
+        $visit_base = [];
+        $r = 0;
+        $visit_base[0][$r] = '';
+        $visit_base[1][$r] = 'Planned';
+        $visit_base[2][$r] = 'Notes/Updates';
+
+        //create PDF
+        if($error === '') {
+
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
+            
+            $pdf = new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            
+            $pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options = [];
+            $pdf_options['font_size'] = 8;
+            $row_h = 6;
+
+            $pdf->changeFont('H2');
+            $pdf->Ln($row_h);
+            $pdf->Cell(30,$row_h,'Assistants:',0,0,'R',0);
+            $pdf->Cell(30,$row_h,'______________________',0,0,'L',0);
+            $pdf->Cell(70,$row_h,'Vehicle:',0,0,'R',0);
+            $pdf->Cell(70,$row_h,'______________________',0,0,'L',0);
+            $pdf->Ln($row_h);
+            $pdf->Cell(30,$row_h,'',0,0,'R',0);
+            $pdf->Cell(30,$row_h,'______________________',0,0,'L',0);
+            $pdf->Cell(70,$row_h,'Start Km.:',0,0,'R',0);
+            $pdf->Cell(70,$row_h,'______________________',0,0,'L',0);
+            $pdf->Ln($row_h);
+            $pdf->Cell(30,$row_h,'',0,0,'R',0);
+            $pdf->Cell(30,$row_h,'______________________',0,0,'L',0);
+            $pdf->Cell(70,$row_h,'End Km.:',0,0,'R',0);
+            $pdf->Cell(70,$row_h,'______________________',0,0,'L',0);
+            $pdf->Ln($row_h);
+            $pdf->Cell(30,$row_h,'Depart @:',0,0,'R',0);
+            $pdf->Cell(30,$row_h,'____________________am',0,0,'L',0);
+            $pdf->Cell(70,$row_h,'Return @:',0,0,'R',0);
+            $pdf->Cell(70,$row_h,'____________________pm',0,0,'L',0);
+            $pdf->Ln($row_h);
+            $pdf->Ln($row_h);
+
+            foreach($visits as $visit) {
+                $data = $visit_base;
+                
+                $r ++;
+                $data[0][$r] = 'category:';
+                $data[1][$r] = $visit['category'];
+                $data[2][$r] = '';
+
+                $r ++;
+                $data[0][$r] = 'Start time:';
+                $data[1][$r] = $visit['time_from'];
+                $data[2][$r] = '';
+                $r ++;
+                $data[0][$r] = 'Finish time:';
+                $data[1][$r] = $visit['time_to'];
+                $data[2][$r] = '';
+
+                $r ++;
+                $data[0][$r] = 'Service address:';
+                $data[1][$r] = $visit['address'];
+                $data[2][$r] = '';
+
+                $r ++;
+                $data[0][$r] = 'Contract notes:';
+                $data[1][$r] = $visit['notes_admin'];
+                $data[2][$r] = '';
+                $r ++;
+                $data[0][$r] = 'Visit notes:';
+                $data[1][$r] = $visit['notes'];
+                $data[2][$r] = '';
+
+                $pdf->changeFont('H1');
+                $pdf->Cell(20,$row_h,'Client :',0,0,'R',0);
+                $pdf->Cell(20,$row_h,$visit['client'].' @'.$visit['location'].' Contract code:'.$visit['client_code'],0,0,'L',0);
+                $pdf->Ln($row_h);
+
+                $pdf->changeFont('H2');
+                $pdf->Cell(20,$row_h,'Contact :',0,0,'R',0);
+                $str = 'Confirmed with '.$visit['contact'];
+                if($visit['contact_position'] !== '') $str .= '('.$visit['contact_position'].')';
+                $str .= ' on '.$visit['date_booked'].' : ';
+                if($visit['tel'] !== '') $str .= 'Tel-'.$visit['tel'].' ';
+                if($visit['tel_alt'] !== '') $str .= ' / '.$visit['tel_alt'].' ';
+                if($visit['cell'] !== '') $str .= 'Cell-'.$visit['cell'].' ';
+                if($visit['cell_alt'] !== '') $str .= ' / '.$visit['cell_alt'].' ';
+                $pdf->Cell(20,$row_h,$str,0,0,'L',0);
+                $pdf->Ln($row_h);
+
+                $pdf->changeFont('TEXT');
+                $pdf->arrayDrawTable($data,$row_h,$col_width,$col_type,'L',$pdf_options);
+                $pdf->Ln($row_h);
+                
+                //get last visit
+                $sql = 'SELECT V.visit_id,V.user_id_tech,U.name AS technician,V.category_id,C.name AS category, '.
+                              'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status '.
+                       'FROM '.$table_visit.' AS V '.
+                             'LEFT JOIN '.$table_category.' AS C ON(V.category_id = C.category_id) '.   
+                             'LEFT JOIN '.$table_user.' AS U ON(V.user_id_tech = U.user_id) '.
+                       'WHERE V.contract_id = "'.$db->escapeSql($visit['contract_id']).'" AND V.status = "COMPLETED" AND '.
+                             'V.date_visit < "'.$db->escapeSql($date).'"  '.
+                       'ORDER BY V.date_visit DESC LIMIT 1';
+                $last_visit = $db->readSqlRecord($sql);  
+                if($last_visit == 0) {
+                    $str = 'No previous visit on record.';
+                } else {
+                    $str = 'By '.$last_visit['technician'].' on '.Date::formatDate($last_visit['date_visit']).' for '.$last_visit['category'];
+                } 
+                $pdf->changeFont('H2');
+                $pdf->Cell(20,$row_h,'Last visit :',0,0,'R',0);
+                $pdf->Cell(20,$row_h,$str,0,0,'L',0);
+                $pdf->Ln($row_h);
+                $pdf->Ln($row_h);   
+            }
+            
+
+            
+                        
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($doc_name,'D');    
+            exit;
+        }    
+ 
+
+    }
+
     public static function contractOrphan($db,$type,$division_id,$options = [],&$error)
     {
         $error = '';
@@ -158,9 +359,10 @@ class HelpersReport {
         $table_division = TABLE_PREFIX.'division';
         $table_client = TABLE_PREFIX.'client';
         $table_location = TABLE_PREFIX.'client_location';
-
+        
+        //NB: C.client_code is Contract/order no NOT client additional CL.client_code
         $sql = 'SELECT I.invoice_id,I.invoice_no,I.date,I.subtotal,I.discount,I.tax,I.total,I.status,I.contract_id, '.
-                      'C.client_id,CL.client_code,CL.account_code,L.address as location_address '.
+                      'C.client_id,C.client_code,CL.account_code,L.address as location_address '.
                'FROM '.$table_invoice.' AS I JOIN '.$table_contract.' AS C ON(I.contract_id = C.contract_id) '.
                      'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
                      'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
@@ -201,13 +403,14 @@ class HelpersReport {
             $line[] = Csv::csvPrep($invoice['account_code']);   //Customer Code, Character, 6 characters maximum
             $line[] = $date['mon'];                             //Period Number, Numeric, 1-13
             $line[] = Date::formatDate($date,'ARRAY','DD-MM-YYYY',['separator'=>'/']); //Date, Character,DD/MM/YYYY
-            $line[] = ''; //Order Number, Character, 25 characters maximum
+            $line[] = $invoice['client_code']; //Order Number, Character, 25 characters maximum
             $line[] = 'Y'; //Inc/Exc, Character, Y=Inclusive, N=Exclusive 
             $line[] = Csv::csvPrep($invoice['discount']); //Discount, Numeric, nominal i assume
             //invoice message 1-3, 3 separate fields of 30 characters maximum each
-            $line[] = '';//$location[0];
-            $line[] = '';//$location[1];
-            $line[] = '';//$location[2];
+            //$client_detail = $client['client']['company_title']."\n".$location['address'];
+            $line[] = $client['client']['company_title'];//$location[0];
+            $line[] = $location[0];
+            $line[] = $location[1];
             //Delivery Address 1-5, 5 separate fields of 30 characters maximum each
             $line[] = $deliver_to[0];
             $line[] = $deliver_to[1];

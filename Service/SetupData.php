@@ -189,6 +189,7 @@ class SetupData extends SetupModuledata
                               `round_id` int(11) NOT NULL,
                               `feedback_id` int(11) NOT NULL,
                               `no_assistants` int(11) NOT NULL,
+                              `user_id_tech` int(11) NOT NULL,
                               `user_id_booked` int(11) NOT NULL,
                               `date_booked` datetime NOT NULL,
                               `date_visit` date NOT NULL,

@@ -51,6 +51,7 @@ class DiaryVisit Extends Record
         $this->changeText('btn_insert','Create new booking for a contract');
 
         $this->addRecordCol(array('id'=>'visit_id','type'=>'INTEGER','title'=>'Visit ID','key'=>true,'key_auto'=>true,'view'=>false));
+        $this->addRecordCol(array('id'=>'status','type'=>'STRING','title'=>'Status','edit'=>true));
 
         if($mode === 'new' or $edit_type === 'INSERT') {
             if($mode === 'new') $this->addMessage('Create a new visit entry for any client contract allocated to round');
@@ -62,6 +63,7 @@ class DiaryVisit Extends Record
         } 
         
         $this->addRecordCol(array('id'=>'user_id_booked','type'=>'INTEGER','title'=>'User booked','join'=>'CONCAT(name,": ",email) FROM '.TABLE_USER.' WHERE user_id','edit'=>false));
+        $this->addRecordCol(array('id'=>'user_id_tech','type'=>'INTEGER','title'=>'Assigned technician','join'=>'CONCAT(name,": ",email) FROM '.TABLE_USER.' WHERE user_id'));
         $this->addRecordCol(array('id'=>'date_booked','type'=>'DATETIME','title'=>'Date booked','edit'=>false));
         $this->addRecordCol(array('id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'visit_category WHERE category_id','edit'=>true));
         $this->addRecordCol(array('id'=>'date_visit','type'=>'DATE','title'=>'Date visit','required'=>true,'new'=>date('Y-m-d')));
@@ -70,7 +72,6 @@ class DiaryVisit Extends Record
         $this->addRecordCol(array('id'=>'no_assistants','type'=>'INTEGER','title'=>'No. assistants','edit'=>true));
         $this->addRecordCol(array('id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'name FROM '.TABLE_PREFIX.'service_feedback WHERE feedback_id','edit'=>true));
         $this->addRecordCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no','required'=>false]);
-        $this->addRecordCol(array('id'=>'status','type'=>'STRING','title'=>'Status','edit'=>true));
         $this->addRecordCol(array('id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false));
 
         $this->addAction(array('type'=>'edit','text'=>'Edit','spacer'=>' - '));
@@ -80,6 +81,7 @@ class DiaryVisit Extends Record
         $this->addSelect('status',['list'=>$status,'list_assoc'=>true]);
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort');
         $this->addSelect('feedback_id','SELECT feedback_id, name FROM '.TABLE_PREFIX.'service_feedback ORDER BY sort');
+        $this->addSelect('user_id_tech','SELECT user_id, name FROM '.TABLE_USER.' ORDER BY name');
        
     }   
 
@@ -88,8 +90,11 @@ class DiaryVisit Extends Record
     {
         $error = '';
         $calc = Date::calcMinutes($data['time_from'],$data['time_to']);
-        if($calc <= 0) $error .= 'Time TO is not after time FROM';
+        if($calc <= 0) $error .= 'Time TO is not after time FROM. ';
 
+        if($data['status'] === 'CONFIRMED') {
+            if($data['user_id_tech'] == 0) $error .= 'You cannot Confirm a visit without assigning a technician.';    
+        }
     }
 
     protected function afterUpdate($id,$context,$data) 

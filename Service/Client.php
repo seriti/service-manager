@@ -20,8 +20,9 @@ class Client extends Table
 
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'client_category WHERE category_id']);
-        $this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Client code']);
-        $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Account code','required'=>false]);
+        $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Account code','required'=>false,'hint'=>'Use this to identify client with your accounting system']);
+        //NB: not to be confused with Contract.client_code  Could use as any external client code
+        //$this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Client code','required'=>false,'hint'=>'Use this to identify client with any other external system']);
         $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name','hint'=>'This will appear in dropdown select lists']);
         $this->addTableCol(['id'=>'company_title','type'=>'STRING','title'=>'Company title','required'=>false,
                             'hint'=>'Official company title for use on invoices and other documents']);
@@ -41,7 +42,7 @@ class Client extends Table
         $this->addAction(['type'=>'popup','text'=>'Contacts','url'=>'client_contact','mode'=>'view','width'=>700,'height'=>600]);
         $this->addAction(['type'=>'popup','text'=>'Locations','url'=>'client_location','mode'=>'view','width'=>600,'height'=>600]);
 
-        $this->addSearch(['client_id','category_id','client_code','account_code','name','company_title','company_no','status'],['rows'=>2]);
+        $this->addSearch(['client_id','category_id','account_code','name','company_title','company_no','status'],['rows'=>2]);
 
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'client_category ORDER BY sort');
         $status = ['OK','HIDE'];
@@ -131,7 +132,28 @@ class Client extends Table
         }    
 
     }
-    //protected function beforeDelete($id,&$error) {}
+    
+
+    protected function beforeDelete($id,&$error) 
+    {
+        $error_tmp = '';
+
+        $sql = 'DELETE FROM '.TABLE_PREFIX.'client_contact WHERE client_id = "'.$this->db->escapeSql($id).'" ';
+        $this->db->executeSql($sql,$error_tmp);
+        if($error_tmp == '') {
+            $this->addMessage('Successfully deleted contacts for '.$this->row_name.' ID['.$id.'] ');
+        } else {
+            $this->addError('Could not delete contacts for '.$this->row_name.' ID['.$key_id.'] ');
+        } 
+
+        $sql = 'DELETE FROM '.TABLE_PREFIX.'client_location WHERE client_id = "'.$this->db->escapeSql($id).'" ';
+        $this->db->executeSql($sql,$error_tmp);
+        if($error_tmp == '') {
+            $this->addMessage('Successfully deleted locations for '.$this->row_name.' ID['.$id.'] ');
+        } else {
+            $this->addError('Could not delete locations for '.$this->row_name.' ID['.$key_id.'] ');
+        } 
+    }
     //protected function afterDelete($id) {}
     //protected function beforeValidate($col_id,&$value,&$error,$context) {}
 
