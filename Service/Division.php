@@ -25,7 +25,7 @@ class Division extends Table
                             'hint'=>'Business banking details and other info left of invoice totals']);
         $this->addTableCol(['id'=>'invoice_prefix','type'=>'STRING','title'=>'Invoice prefix','hint'=>'Text to appear before invoice No.']);
         $this->addTableCol(['id'=>'invoice_no','type'=>'INTEGER','title'=>'Invoice no','hint'=>'Incremental invoice number','edit'=>false]);
-        $this->addTableCol(['id'=>'contract_prefix','type'=>'STRING','title'=>'Contract prefix','hint'=>'Text to appear before Contract No.']);
+        $this->addTableCol(['id'=>'contract_prefix','type'=>'STRING','title'=>'Contract prefix','hint'=>'Text to appear before Contract No.','required'=>false]);
         $this->addTableCol(['id'=>'contract_no','type'=>'INTEGER','title'=>'Contract no','hint'=>'Incremental contract number','edit'=>false]);
         
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);

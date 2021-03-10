@@ -83,6 +83,7 @@ class InvoiceWizard extends Wizard
             $date_last_invoice = $this->form['date_last_invoice'];
 
             $table_contract = $this->table_prefix.'contract';
+            $table_client = $this->table_prefix.'client';
             $table_visit = $this->table_prefix.'contract_visit';
             $table_invoice = $this->table_prefix.'contract_invoice';
                         
@@ -93,9 +94,9 @@ class InvoiceWizard extends Wizard
             $sql = 'SELECT day_id,LOWER(name) FROM '.TABLE_PREFIX.'service_day ORDER BY sort ';
             $this->data['visit_days'] = $this->db->readSqlList($sql); 
 
-            $sql = 'SELECT C.contract_id,C.type_id,C.client_code,C.price,C.price_visit,C.discount,C.no_assistants,C.pay_method_id,C.status, '.
+            $sql = 'SELECT C.contract_id,C.type_id,C.client_code,CL.name AS client,C.price,C.price_visit,C.discount,C.no_assistants,C.pay_method_id,C.status, '.
                           '(SELECT I.date FROM '.$table_invoice.' AS I WHERE I.contract_id = C.contract_id ORDER BY I.date DESC LIMIT 1) AS date_last_invoice '.
-                   'FROM '.$table_contract.' AS C '.
+                   'FROM '.$table_contract.' AS C LEFT JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
                    'WHERE C.division_id = "'.$this->db->escapeSql($division_id).'" AND C.round_id = "'.$this->db->escapeSql($round_id).'" AND C.type_id = "'.$this->db->escapeSql($type_id).'" '.
                    'HAVING (date_last_invoice IS NULL OR date_last_invoice < "'.$this->db->escapeSql($date_last_invoice).'") '.
                    'ORDER BY C.date_start ';

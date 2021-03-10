@@ -17,7 +17,7 @@ class Diary extends ReportTool
         //$this->report_header = '';
         $param = [];
         $this->report_select_title = '';
-        $this->always_list_reports = false;
+        $this->always_list_reports = true;
         $this->submit_title = 'View Diary';
 
         $param = ['input'=>['select_round','select_technician','select_date_period','select_status']];
@@ -50,7 +50,7 @@ class Diary extends ReportTool
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
             $param['xtra'] = ['ALL'=>'All technicians'];
-            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE status <> "HIDE" ORDER BY name'; 
+            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY name'; 
             if(isset($form['user_id_tech'])) $user_id_tech = $form['user_id_tech']; else $user_id_tech = 'ALL';
             $html .= 'Technician:&nbsp;'.Form::sqlList($sql,$this->db,'user_id_tech',$user_id_tech,$param);
         }

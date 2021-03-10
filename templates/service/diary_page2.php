@@ -4,6 +4,7 @@ use Seriti\Tools\Html;
 use Seriti\Tools\Date;
 
 $check_param['class'] = 'form-control edit_input';
+$text_param['class'] = 'form-control edit_input';
 $list_param['class'] = 'form-control edit_input input-small';
 $time_param['class'] = 'form-control edit_input input-small';
 $date_param['class'] = 'form-control edit_input bootstrap_date input-small';
@@ -31,7 +32,8 @@ $visit_days = $data['visit_days'];
     $item_param['class'] = 'form-control';
     
     echo '<table id="item_table" class="table  table-striped table-bordered table-hover table-condensed">'.
-         '<tr><th>Contract ID</th><th>Code</th><th>Type</th><th>Last visit</th><th>Category</th><th>Next visit</th><th>@Time</th><th>Est. minutes</th><th>No. assistants</th><th>Create diary entry</th><th>Del.</th></tr>';
+         '<tr><th>Contract ID</th><th>Client</th><th>Code</th><th>Type</th><th>Last visit</th><th>Category</th><th>Next visit</th><th>@Time</th><th>Est. minutes</th>'.
+         '<th>No. assistants</th><th>Notes</th><th>Create diary entry</th><th>Del.</th></tr>';
     
     foreach($data['contracts'] as $id => $contract) {
         $name_cat = 'cat_'.$id;
@@ -40,11 +42,13 @@ $visit_days = $data['visit_days'];
         $name_minutes = 'minutes_'.$id;
         $name_create = 'create_'.$id;
         $name_assist = 'assist_'.$id;
+        $name_notes = 'notes_'.$id;
 
         $sql_cat = 'SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort';
 
         echo '<tr>'.
              '<td>'.$id.'</td>'.
+             '<td>'.$contract['client'].'</td>'.
              '<td>'.$contract['client_code'].'</td>'.
              '<td>'.$contract['type_id'].'</td>'.
              '<td>'.$contract['date_last'].'</td>'.
@@ -53,6 +57,7 @@ $visit_days = $data['visit_days'];
              '<td>'.Form::textInput($name_time,$contract['new_time'],$time_param).'</td>'.
              '<td>'.Form::textInput($name_minutes,$contract['new_minutes'],$time_param).'</td>'.
              '<td>'.Form::textInput($name_assist,$contract['no_assist'],$time_param).'</td>'.
+             '<td>'.Form::textAreaInput($name_notes,$contract['notes'],10,2,$text_param).'</td>'.
              '<td>'.Form::checkBox($name_create,'YES',$contract['new_create'],$check_param).'</td>'.
              '<td><a href="#" onclick="delete_row(this)"><img src="/images/cross.png"></a></td>'.
              '</tr>';

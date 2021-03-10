@@ -32,7 +32,7 @@ $visit_days = $data['visit_days'];
     $item_param['class'] = 'form-control';
     
     echo '<table id="item_table" class="table  table-striped table-bordered table-hover table-condensed">'.
-         '<tr><th>Contract ID</th><th>Code</th><th>Type</th><th>Last invoice</th><th>Subtotal</th><th>Discount</th><th>Tax</th><th>Total</th><th>Notes</th><th>Invoice Action</th><th>Process invoice</th><th>Del.</th></tr>';
+         '<tr><th>Contract ID</th><th>Client</th><th>Code</th><th>Type</th><th>Last invoice</th><th>Subtotal</th><th>Discount</th><th>Tax</th><th>Total</th><th>Notes</th><th>Invoice Action</th><th>Process invoice</th><th>Del.</th></tr>';
     
     $action = ['NONE'=>'Only create invoice PDF','EMAIL'=>'Create invoice PDF & email to client'];
     foreach($data['contracts'] as $id => $contract) {
@@ -45,6 +45,7 @@ $visit_days = $data['visit_days'];
 
         echo '<tr>'.
              '<td>'.$id.': '.$item_link.'</td>'.
+             '<td>'.$contract['client'].'</td>'.
              '<td>'.$contract['client_code'].'</td>'.
              '<td>'.$contract['type_id'].'</td>'.
              '<td>'.$contract['inv_date_last'].'</td>'.

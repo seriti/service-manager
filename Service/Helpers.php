@@ -60,12 +60,24 @@ class Helpers {
         $totals = ['subtotal'=>0,'discount'=>0,'tax'=>0,'total'=>0];
 
         $contract = self::get($db,$table_prefix,'contract',$contract_id);
-       
+
+          
+        //get most recent completed(ie NOT invoiced) visit
+        $sql = 'SELECT V.visit_id,V.date_visit,V.service_no,V.notes '.
+               'FROM '.$table_visit.' AS V '.
+               'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
+               'ORDER BY V.date_visit DESC LIMIT 1';
+        $last_visit = $db->readSqlRecord($sql);
+        if($last_visit != 0) {
+            $visit_detail = ' '.$last_visit['notes'];
+        } else {
+            $visit_detail = '';
+        }
         
         if($contract['type_id'] === 'SINGLE') {
             $invoice_item = [];
             $invoice_item['code'] = $contract['client_code'];
-            $invoice_item['name'] = 'Single Contract: '.$contract['client_code'];
+            $invoice_item['name'] = 'Single Contract: '.$contract['client_code'].$visit_detail;
             $invoice_item['quantity'] = 1;
             $invoice_item['units'] = '';
             $invoice_item['price'] = $contract['price'];
@@ -98,7 +110,7 @@ class Helpers {
 
             $invoice_item = [];
             $invoice_item['code'] = $contract['client_code'];
-            $invoice_item['name'] = 'Repeat Contract: '.$contract['client_code'];//' Visit-'.$visit_no ;
+            $invoice_item['name'] = 'Repeat Contract: '.$contract['client_code'].$visit_detail;//' Visit-'.$visit_no ;
             $invoice_item['quantity'] = 1;
             $invoice_item['units'] = '';
             $invoice_item['price'] = $price;

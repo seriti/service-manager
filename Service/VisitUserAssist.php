@@ -32,7 +32,7 @@ class VisitUserAssist extends Table
         $this->addSearch(['assist_id','visit_id','user_id','note'],['rows'=>1]);
 
         //$this->addSelect('visit_id','SELECT visit_id, name FROM '.TABLE_PREFIX.'contract_visit ORDER BY name');
-        $this->addSelect('user_id','SELECT user_id, name FROM '.TABLE_USER.' ORDER BY name');
+        $this->addSelect('user_id','SELECT user_id, name FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY name');
 
     }
 

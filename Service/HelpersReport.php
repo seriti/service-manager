@@ -81,7 +81,7 @@ class HelpersReport {
         $page_title = 'Round: '.$round['name'].' for date '.Date::formatDate($date).' & technician: '.$technician['name'];
         
         //block table parameters
-        $col_width=array(30,80,80);
+        $col_width=array(30,120,40);
         $col_type=array('','','');
 
         $visit_base = [];
@@ -112,6 +112,7 @@ class HelpersReport {
             $pdf_options = [];
             $pdf_options['font_size'] = 8;
             $row_h = 6;
+            $row_h2 = 5;
 
             $pdf->changeFont('H2');
             $pdf->Ln($row_h);
@@ -138,6 +139,7 @@ class HelpersReport {
             $pdf->Ln($row_h);
 
             foreach($visits as $visit) {
+                $r = 0;
                 $data = $visit_base;
                 
                 $r ++;
@@ -159,11 +161,14 @@ class HelpersReport {
                 $data[1][$r] = $visit['address'];
                 $data[2][$r] = '';
 
+                /*
                 $r ++;
                 $data[0][$r] = 'Contract notes:';
                 $data[1][$r] = $visit['notes_admin'];
                 $data[2][$r] = '';
                 $r ++;
+                */
+
                 $data[0][$r] = 'Visit notes:';
                 $data[1][$r] = $visit['notes'];
                 $data[2][$r] = '';
@@ -186,7 +191,7 @@ class HelpersReport {
                 $pdf->Ln($row_h);
 
                 $pdf->changeFont('TEXT');
-                $pdf->arrayDrawTable($data,$row_h,$col_width,$col_type,'L',$pdf_options);
+                $pdf->arrayDrawTable($data,$row_h2,$col_width,$col_type,'L',$pdf_options);
                 $pdf->Ln($row_h);
                 
                 //get last visit
@@ -474,6 +479,108 @@ class HelpersReport {
             $doc_name = $doc_name_base.'.csv';
             Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD');
             exit();
+        }               
+
+        return $html;
+    }
+
+    public static function invoiceSummary($db,$division_id,$date_from,$date_to,$options = [],&$error)
+    {
+        $error = '';
+
+
+        if(!isset($options['output'])) $options['output'] = 'BROWSER';
+        if(!isset($options['format'])) $options['format'] = 'CSV';
+        $options['format'] = strtoupper($options['format']);
+        
+        if($division_id === 'ALL') {
+            $division_name = 'all divisions';
+        } else {
+            $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
+            if($division == 0) {
+                $error .= 'Invalid Division['.$division_id.'] selected.';
+            } else {
+                $division_name = $division['name'];
+            }    
+        }    
+        
+        if($error !== '') return false;
+
+        $doc_name_base = str_replace(' ','_',$division_name).'_invoices_from_'.
+                         Date::formatDate($date_from).'_to_'.Date::formatDate($date_to).'_on_'.date('Y-m-d');
+
+        $page_title = $division_name.' invoices from '.Date::formatDate($date_from).' to '.Date::formatDate($date_to);
+
+        $table_invoice = TABLE_PREFIX.'contract_invoice';
+        $table_invoice_item = TABLE_PREFIX.'invoice_item';
+        $table_contract = TABLE_PREFIX.'contract';
+        $table_division = TABLE_PREFIX.'division';
+        $table_client = TABLE_PREFIX.'client';
+        $table_location = TABLE_PREFIX.'client_location';
+        
+        //NB: C.client_code is Contract/order no NOT client additional CL.client_code
+        $sql = 'SELECT I.invoice_id,I.invoice_no,I.date,I.subtotal,I.discount,I.tax,I.total,I.status,I.contract_id, '.
+                      'C.client_code AS contract_code,CL.name AS client,CL.account_code,L.address as location_address '.
+               'FROM '.$table_invoice.' AS I JOIN '.$table_contract.' AS C ON(I.contract_id = C.contract_id) '.
+                     'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
+                     'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
+               'WHERE I.date >= "'.$db->escapeSql($date_from).'" AND I.date <= "'.$db->escapeSql($date_to).'" ';
+        if($division_id !== 'ALL') $sql .= 'AND C.division_id = "'.$db->escapeSql($division_id).'" ';       
+               'ORDER BY I.date, I.invoice_id ';
+                    
+        $invoices = $db->readSqlResult($sql);
+        if($invoices == 0) {
+            $error .= 'No invoices found between '.Date::formatDate($date_from).' and '.Date::formatDate($date_to).' for '.$division_name;
+            return false;
+        } 
+            
+
+        $col_width = array(10,10,20,20,20,20,20,20,20,20,20,20,20);
+        $col_type = array('','','','DBL2','DBL2','DBL2','DBL2','','','','','','');
+
+        if($options['format'] === 'PDF') {
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
+            
+            $pdf = new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            
+            $pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options = [];
+            $pdf_options['font_size'] = 8;
+            $row_h = 6;
+            
+            $pdf->mysqlDrawTable($invoices,$row_h,$col_width,$col_type,'L',$pdf_options);
+
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($doc_name,'D');    
+            exit;
+        }
+
+
+        if($options['format'] === 'HTML') {
+            $html_options = [];
+            $html_options['col_type'] = $col_type;
+            $html = Html::mysqlDumpHtml($invoices,$html_options);
+        }
+
+        if($options['format'] === 'CSV') {
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.csv';
+            $csv_data = Csv::mysqlDumpCsv($invoices);
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD','csv');
+            exit;
         }               
 
         return $html;

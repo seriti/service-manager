@@ -81,7 +81,7 @@ class DiaryVisit Extends Record
         $this->addSelect('status',['list'=>$status,'list_assoc'=>true]);
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort');
         $this->addSelect('feedback_id','SELECT feedback_id, name FROM '.TABLE_PREFIX.'service_feedback ORDER BY sort');
-        $this->addSelect('user_id_tech','SELECT user_id, name FROM '.TABLE_USER.' ORDER BY name');
+        $this->addSelect('user_id_tech','SELECT user_id, name FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY name');
        
     }   
 

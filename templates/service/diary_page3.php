@@ -26,7 +26,7 @@ $category = $this->db->readSqlList($sql);
     $item_param['class'] = 'form-control';
     
     echo '<table id="item_table" class="table  table-striped table-bordered table-hover table-condensed">'.
-         '<tr><th>Contract</th><th>Category</th><th>Visit on</th><th>From</th><th>To</th><th>No. assistants</th></tr>';
+         '<tr><th>Contract</th><th>Category</th><th>Visit on</th><th>From</th><th>To</th><th>No. assistants</th><th>Notes</th></tr>';
     
     foreach($data['contracts'] as $id => $contract) {
         if($contract['new_create']) {
@@ -37,6 +37,7 @@ $category = $this->db->readSqlList($sql);
                '<td>'.$contract['new_time'].'</td>'.
                '<td>'.Date::incrementTime($contract['new_time'],$contract['new_minutes']).'</td>'.
                '<td>'.$contract['no_assist'].'</td>'.
+               '<td>'.$contract['notes'].'</td>'.
                '</tr>';
 
         }

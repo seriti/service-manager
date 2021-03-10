@@ -26,6 +26,9 @@ class Report extends ReportTool
         $param = ['input'=>['select_division','select_date_period','select_format']];
         $this->addReport('INVOICE_EXPORT','Division Invoice Pastel-CSV export',$param); 
 
+        $param = ['input'=>['select_division','select_date_period','select_format']];
+        $this->addReport('INVOICE_SUMMARY','Division Invoices issued',$param); 
+
         $param = ['input'=>['select_division','select_format']];
         $this->addReport('CONTRACT_ORPHAN_INVOICE','Contracts without an invoice',$param);
         $this->addReport('CONTRACT_ORPHAN_VISIT','Contracts without a planned or completed visit',$param); 
@@ -149,6 +152,11 @@ class Report extends ReportTool
 
         if($id === 'INVOICE_EXPORT') {
             $html = HelpersReport::invoiceCsvExport($this->db,$form['division_id'],$form['date_from'],$form['date_to'],$options,$error);
+            if($error !== '') $this->addError($error);
+        }
+
+         if($id === 'INVOICE_SUMMARY') {
+            $html = HelpersReport::invoiceSummary($this->db,$form['division_id'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);
         }
 

@@ -120,7 +120,7 @@ class Contract extends Table
         $this->addSelect('round_id','(SELECT "0","No round assigned") UNION ALL (SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort)');
         $this->addSelect('visit_day_id','SELECT day_id, name FROM '.TABLE_PREFIX.'service_day ORDER BY sort');
 
-        $sql = 'SELECT '.$this->user_cols['id'].','.$this->user_cols['name'].' FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" ORDER BY '.$this->user_cols['name'];
+        $sql = 'SELECT '.$this->user_cols['id'].','.$this->user_cols['name'].' FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY '.$this->user_cols['name'];
         $this->addSelect('user_id_responsible',$sql);
         $this->addSelect('user_id_sold',$sql);
         $this->addSelect('user_id_signed',$sql);

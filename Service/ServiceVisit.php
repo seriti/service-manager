@@ -36,6 +36,8 @@ class ServiceVisit extends Table
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false,'list'=>true]);
 
         //$this->addSql('WHERE','T.status <> "NEW" AND T.status <> "CONFIRMED" ');
+        $this->addSql('JOIN','LEFT JOIN '.TABLE_PREFIX.'contract AS C ON(T.contract_id = C.contract_id)');
+        $this->addSql('JOIN','LEFT JOIN '.TABLE_PREFIX.'client AS CL ON(C.client_id = CL.client_id)');
                
         $this->addSortOrder('T.visit_id DESC','Most recent first','DEFAULT');
 
@@ -45,6 +47,7 @@ class ServiceVisit extends Table
         $this->addAction(['type'=>'popup','text'=>'Service&nbsp;items','url'=>'visit_item','mode'=>'view','width'=>600,'height'=>600]);
 
         $this->addSearch(['visit_id','status','contract_id','category_id','round_id','user_id_tech','no_assistants','date_visit','feedback_id','notes'],['rows'=>3]);
+        $this->addSearchXtra('CL.name','Client name');
 
         $this->addSelect('contract_id','SELECT contract_id,client_code FROM '.TABLE_PREFIX.'contract ORDER BY date_start DESC');
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort');
@@ -54,7 +57,7 @@ class ServiceVisit extends Table
         //$status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRM booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
         $status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRMED booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
         $this->addSelect('status',['list'=>$status,'list_assoc'=>true]);
-        $this->addSelect('user_id_tech','SELECT user_id, name FROM '.TABLE_USER.' ORDER BY name');
+        $this->addSelect('user_id_tech','SELECT user_id, name FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY name');
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'VST','max_no'=>100,
                            'icon'=>'<span class="glyphicon glyphicon-file" aria-hidden="true"></span>&nbsp;manage',

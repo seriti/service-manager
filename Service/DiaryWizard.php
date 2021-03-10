@@ -84,6 +84,7 @@ class DiaryWizard extends Wizard
             $date_last_visit = $this->form['date_last_visit'];
 
             $table_contract = TABLE_PREFIX.'contract';
+            $table_client = TABLE_PREFIX.'client';
             $table_visit = TABLE_PREFIX.'contract_visit';
             
             $this->data['division'] = Helpers::get($this->db,TABLE_PREFIX,'division',$division_id);
@@ -93,9 +94,9 @@ class DiaryWizard extends Wizard
             $sql = 'SELECT day_id,LOWER(name) FROM '.TABLE_PREFIX.'service_day ORDER BY sort ';
             $this->data['visit_days'] = $this->db->readSqlList($sql); 
 
-            $sql = 'SELECT C.contract_id,C.type_id,C.client_code,C.visit_day_id,C.visit_time_from,C.visit_time_to,C.time_estimate,C.date_start,C.no_assistants, '.
+            $sql = 'SELECT C.contract_id,C.type_id,C.client_code,CL.name AS client,C.visit_day_id,C.visit_time_from,C.visit_time_to,C.time_estimate,C.date_start,C.no_assistants,C.notes_admin, '.
                           '(SELECT V.date_visit FROM '.$table_visit.' AS V WHERE V.contract_id = C.contract_id ORDER BY V.date_visit DESC LIMIT 1) AS date_last_visit '.
-                   'FROM '.$table_contract.' AS C '.
+                   'FROM '.$table_contract.' AS C LEFT JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
                    'WHERE C.division_id = "'.$this->db->escapeSql($division_id).'" AND C.round_id = "'.$this->db->escapeSql($round_id).'" AND C.type_id = "'.$this->db->escapeSql($type_id).'" '.
                    'HAVING (date_last_visit IS NULL OR date_last_visit < "'.$this->db->escapeSql($date_last_visit).'") '.
                    'ORDER BY C.division_id,C.date_start ';
@@ -120,7 +121,8 @@ class DiaryWizard extends Wizard
                         }
                         
                         $contract['new_minutes'] = $contract['time_estimate'];  
-                        $contract['no_assist'] = $contract['no_assistants'];    
+                        $contract['no_assist'] = $contract['no_assistants'];
+                        $contract['notes'] = $contract['notes_admin'];   
                     }
                                  
                     if($contract['date_last'] == '') {
@@ -146,6 +148,7 @@ class DiaryWizard extends Wizard
                 $name_time = 'time_'.$id;
                 $name_minutes = 'minutes_'.$id;
                 $name_assist = 'assist_'.$id;
+                $name_notes = 'notes_'.$id;
                 $name_create = 'create_'.$id;
 
                 $contract['new_cat'] = Secure::clean('integer',$_POST[$name_cat]);
@@ -153,6 +156,7 @@ class DiaryWizard extends Wizard
                 $contract['new_time'] = Secure::clean('date',$_POST[$name_time]);
                 $contract['new_minutes'] = Secure::clean('integer',$_POST[$name_minutes]);
                 $contract['no_assist'] = Secure::clean('integer',$_POST[$name_assist]);
+                $contract['notes'] = Secure::clean('text',$_POST[$name_notes]);
                 if(isset($_POST[$name_create]) and $_POST[$name_create] === 'YES') {
                     $contract['new_create'] = true;
                 } else {
@@ -170,7 +174,7 @@ class DiaryWizard extends Wizard
                     if($error_tmp !== '') {
                         $error_entry .= $error_tmp.' ';
                     } else {
-                        if(Date::mysqlGetTime($contract['new_date']) < time()) $error_entry .= 'Next visit date cannot be today or earlier. ';
+                        //if(Date::mysqlGetTime($contract['new_date']) < time()) $error_entry .= 'Next visit date cannot be today or earlier. ';
                     }    
 
                     Validate::time('Visit time start',$contract['new_time'],'HH:MM',$error_tmp);
@@ -216,6 +220,7 @@ class DiaryWizard extends Wizard
                         $visit['time_from'] = $contract['new_time'];
                         $visit['time_to'] = Date::incrementTime($contract['new_time'],$contract['new_minutes']);
                         $visit['no_assistants'] = $contract['no_assist'];
+                        $visit['notes'] = $contract['notes'];
                         $visit['status'] = 'NEW';
 
                         $visit_id = $this->db->insertRecord($table_visit,$visit,$error_tmp);
