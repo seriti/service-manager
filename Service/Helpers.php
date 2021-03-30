@@ -55,29 +55,43 @@ class Helpers {
         $table_contract_item = $table_prefix.'contract_item';
         $table_item = $table_prefix.'service_item';
         $table_units = $table_prefix.'item_units';
+        $table_account_code = $table_prefix.'account_code';
 
         $invoice_items = [];
         $totals = ['subtotal'=>0,'discount'=>0,'tax'=>0,'total'=>0];
 
         $contract = self::get($db,$table_prefix,'contract',$contract_id);
 
-          
-        //get most recent completed(ie NOT invoiced) visit
-        $sql = 'SELECT V.visit_id,V.date_visit,V.service_no,V.notes '.
-               'FROM '.$table_visit.' AS V '.
-               'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
-               'ORDER BY V.date_visit DESC LIMIT 1';
-        $last_visit = $db->readSqlRecord($sql);
-        if($last_visit != 0) {
-            $visit_detail = ' '.$last_visit['notes'];
-        } else {
-            $visit_detail = '';
+        
+        $contract_info = '';
+        if(INVOICE_SETUP['last_visit_info']) {
+            //get most recent completed(ie NOT invoiced) visit
+            $sql = 'SELECT V.visit_id,V.date_visit,V.service_no,V.notes '.
+                   'FROM '.$table_visit.' AS V '.
+                   'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
+                   'ORDER BY V.date_visit DESC LIMIT 1';
+            $last_visit = $db->readSqlRecord($sql);
+            if($last_visit != 0) $contract_info = ' '.$last_visit['notes'];
         }
+
+        if(INVOICE_SETUP['contract_item'] === 'account_code' and $contract['account_code'] !== '') {
+            $contract_item_code = $contract['account_code'];
+
+            if(INVOICE_SETUP['account_info']) {
+                $sql = 'SELECT description FROM '.$table_account_code.' WHERE code = "'.$contract['account_code'].'" ';
+                $str = $db->readSqlValue($sql,'');
+                if($str === '') $str = $contract['account_code'];
+                $contract_info .= ' - '.$str;
+            } 
+        } else {
+            $contract_item_code = $contract['client_code'];
+        }       
+        
         
         if($contract['type_id'] === 'SINGLE') {
             $invoice_item = [];
-            $invoice_item['code'] = $contract['client_code'];
-            $invoice_item['name'] = 'Single Contract: '.$contract['client_code'].$visit_detail;
+            $invoice_item['code'] = $contract_item_code;
+            $invoice_item['name'] = 'Single Contract: '.$contract['client_code'].$contract_info;
             $invoice_item['quantity'] = 1;
             $invoice_item['units'] = '';
             $invoice_item['price'] = $contract['price'];
@@ -109,8 +123,8 @@ class Helpers {
             }    
 
             $invoice_item = [];
-            $invoice_item['code'] = $contract['client_code'];
-            $invoice_item['name'] = 'Repeat Contract: '.$contract['client_code'].$visit_detail;//' Visit-'.$visit_no ;
+            $invoice_item['code'] = $contract_item_code;
+            $invoice_item['name'] = 'Repeat Contract: '.$contract['client_code'].$contract_info;//' Visit-'.$visit_no ;
             $invoice_item['quantity'] = 1;
             $invoice_item['units'] = '';
             $invoice_item['price'] = $price;

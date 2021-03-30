@@ -2,6 +2,7 @@
 use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 
+$text_param['class'] = 'form-control edit_input';
 $list_param['class'] = 'form-control edit_input';
 $date_param['class'] = 'form-control edit_input bootstrap_date';
 ?>
@@ -49,6 +50,24 @@ $date_param['class'] = 'form-control edit_input bootstrap_date';
     <div class="col-sm-3">
     <?php 
     echo Form::textInput('date_last_invoice',$form['date_last_invoice'],$date_param)
+    ?>
+    </div>
+  </div>
+
+   <div class="row">
+    <div class="col-sm-3">Client name(or part of):</div>
+    <div class="col-sm-3">
+    <?php 
+    echo Form::textInput('client_name',$form['client_name'],$text_param)
+    ?>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-sm-3">Client contract code(or part of):</div>
+    <div class="col-sm-3">
+    <?php 
+    echo Form::textInput('client_code',$form['client_code'],$text_param)
     ?>
     </div>
   </div>

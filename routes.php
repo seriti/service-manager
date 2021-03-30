@@ -15,6 +15,7 @@ $app->group('/admin', function () {
         $this->get('/setup_data', \App\Service\SetupDataController::class);
         $this->any('/report', \App\Service\ReportController::class);
 
+        $this->any('/account_code', App\Service\AccountCodeController::class);
         $this->any('/agent', App\Service\AgentController::class);
         $this->any('/client', App\Service\ClientController::class);
         $this->any('/client_file', App\Service\ClientFileController::class);

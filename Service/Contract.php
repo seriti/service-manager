@@ -39,6 +39,13 @@ class Contract extends Table
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client','onchange'=>'clientChange()']);
         $this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Contract code','new'=>'CALCULATE',
                             'hint'=>'A unique code used to identify contract to client. CALCULATE default will increment division contract counter']);
+
+        if(INVOICE_SETUP['contract_item'] === 'account_code') {
+            $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Accounting code','required'=>false,
+                                'hint'=>'Use this to identify contract as invoice item with your     accounting system']);
+            $this->addSelect('account_code',['sql'=>'SELECT code, CONCAT(code,":",description) FROM '.TABLE_PREFIX.'account_code ORDER BY sort',
+                                         'xtra'=>['SELECT'=>'Please select an accounting code for invoicing']]);
+        }    
         $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'Location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);
         $this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'CONCAT(name,"-",contact_id) FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
         $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service Round','join'=>'name FROM '.TABLE_PREFIX.'service_round WHERE round_id']);
@@ -107,8 +114,8 @@ class Contract extends Table
         
         $search_rows = 5;           
         $this->addSearch($search,['rows'=>$search_rows]);
-
-        
+                
+        $this->addSelect('client_id','SELECT client_id, name FROM '.TABLE_PREFIX.'client ORDER BY name');
         $this->addSelect('division_id','SELECT division_id, name FROM '.TABLE_PREFIX.'division ORDER BY sort');
         $this->addSelect('client_id','SELECT client_id, name FROM '.TABLE_PREFIX.'client ORDER BY name');
         //$this->addSelect('location_id','SELECT location_id, name FROM '.TABLE_PREFIX.'client_location ORDER BY sort');
@@ -154,6 +161,14 @@ class Contract extends Table
     
     protected function beforeUpdate($id,$context,&$data,&$error) 
     {
+        
+        if(INVOICE_SETUP['contract_item'] === 'account_code') {
+            if($data['account_code'] === 'SELECT') {
+                $error .= 'You have not selected an accounting code for invoicing';
+            }    
+        }
+            
+
         if($data['client_code'] === 'CALCULATE') {
             $data['client_code'] = Helpers::getContractCode($this->db,TABLE_PREFIX,$data['division_id']); 
         }

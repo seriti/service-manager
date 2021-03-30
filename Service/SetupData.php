@@ -8,7 +8,7 @@ class SetupData extends SetupModuledata
 
     public function setupSql()
     {
-        $this->tables = ['client','client_category','client_contact','client_location','location_category','division','agent','pay_method',
+        $this->tables = ['client','client_category','client_contact','client_location','location_category','division','account_code','agent','pay_method',
                          'contract','contract_category','contract_item','contract_visit','contract_invoice','invoice_item',
                          'service_round','service_item','item_units','service_price','service_day','service_errand','errand_category',
                          'service_feedback','visit_category','visit_user_assist','visit_item',
@@ -101,6 +101,16 @@ class SetupData extends SetupModuledata
                               PRIMARY KEY (`division_id`)
                             ) ENGINE=InnoDB DEFAULT CHARSET=utf8');
 
+         $this->addCreateSql('account_code',
+                            'CREATE TABLE `TABLE_NAME` (
+                              `code_id` INT NOT NULL AUTO_INCREMENT,
+                              `code` VARCHAR(64) NOT NULL,
+                              `description` TEXT NOT NULL,
+                              `sort` INT NOT NULL,
+                              `status` VARCHAR(64) NOT NULL,
+                              PRIMARY KEY (`code_id`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8');
+
         $this->addCreateSql('agent',
                             'CREATE TABLE `TABLE_NAME` (
                               `agent_id` INT NOT NULL AUTO_INCREMENT,
@@ -126,6 +136,7 @@ class SetupData extends SetupModuledata
                               `type_id` VARCHAR(64) NOT NULL,
                               `client_id` int(11) NOT NULL,
                               `client_code` VARCHAR(64) NOT NULL,
+                              `account_code` VARCHAR(64) NOT NULL,
                               `agent_id` int(11) NOT NULL,
                               `location_id` int(11) NOT NULL,
                               `contact_id` int(11) NOT NULL,

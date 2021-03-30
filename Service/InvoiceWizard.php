@@ -46,6 +46,8 @@ class InvoiceWizard extends Wizard
         $this->addVariable(array('id'=>'type_id','type'=>'STRING','title'=>'Contract type','required'=>true,'new'=>'REPEAT'));
         $this->addVariable(array('id'=>'round_id','type'=>'INTEGER','title'=>'Agent','required'=>true));
         $this->addVariable(array('id'=>'date_last_invoice','type'=>'DATE','title'=>'Date last invoiced','required'=>true,'new'=>$date_last_visit));
+        $this->addVariable(array('id'=>'client_name','type'=>'STRING','title'=>'Client name','required'=>false));
+        $this->addVariable(array('id'=>'client_code','type'=>'STRING','title'=>'Client Contract code','required'=>false));
 
         /*
         $this->addVariable(array('id'=>'client_id','type'=>'INTEGER','title'=>'Client','required'=>true));
@@ -81,6 +83,8 @@ class InvoiceWizard extends Wizard
             $type_id = $this->form['type_id'];
             $round_id = $this->form['round_id'];
             $date_last_invoice = $this->form['date_last_invoice'];
+            $client_name = trim($this->form['client_name']);
+            $client_code = trim($this->form['client_code']);
 
             $table_contract = $this->table_prefix.'contract';
             $table_client = $this->table_prefix.'client';
@@ -97,12 +101,17 @@ class InvoiceWizard extends Wizard
             $sql = 'SELECT C.contract_id,C.type_id,C.client_code,CL.name AS client,C.price,C.price_visit,C.discount,C.no_assistants,C.pay_method_id,C.status, '.
                           '(SELECT I.date FROM '.$table_invoice.' AS I WHERE I.contract_id = C.contract_id ORDER BY I.date DESC LIMIT 1) AS date_last_invoice '.
                    'FROM '.$table_contract.' AS C LEFT JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                   'WHERE C.division_id = "'.$this->db->escapeSql($division_id).'" AND C.round_id = "'.$this->db->escapeSql($round_id).'" AND C.type_id = "'.$this->db->escapeSql($type_id).'" '.
-                   'HAVING (date_last_invoice IS NULL OR date_last_invoice < "'.$this->db->escapeSql($date_last_invoice).'") '.
+                   'WHERE C.division_id = "'.$this->db->escapeSql($division_id).'" AND C.round_id = "'.$this->db->escapeSql($round_id).'" AND C.type_id = "'.$this->db->escapeSql($type_id).'" ';
+            if($client_name !== '') $sql .= 'AND CL.name LIKE "%'.$this->db->escapeSql($client_name).'%" ';     
+            if($client_code !== '') $sql .= 'AND C.client_code LIKE "%'.$this->db->escapeSql($client_code).'%" ';     
+            $sql .='HAVING (date_last_invoice IS NULL OR date_last_invoice < "'.$this->db->escapeSql($date_last_invoice).'") '.
                    'ORDER BY C.date_start ';
             $contracts = $this->db->readSqlArray($sql); 
             if($contracts == 0) {
-                $this->addError('No contracts found without an invoice since '.$date_last_invoice);
+                $str = 'No contracts found without an invoice since '.$date_last_invoice;
+                if($client_name !== '') $str .= '& client name contains text "'.$this->db->escapeSql($client_name).'" ';     
+                if($client_code !== '')  $str .= '& client contract code contains text "'.$this->db->escapeSql($client_code).'" ';   
+                $this->addError($str);
             } else {
                 //assign contract pricing to invoice
                 foreach($contracts as $id => $contract) {

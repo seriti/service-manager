@@ -20,6 +20,7 @@ class SetupDashboard extends DashboardTool
         $this->addItem('GENERAL','Business divisions & service items & pricing',['link'=>'division']);
         $this->addItem('GENERAL','Client categories',['link'=>'client_category']); 
         $this->addItem('GENERAL','Client Address/Location categories',['link'=>'location_category']); 
+        $this->addItem('GENERAL','Accounting contract codes',['link'=>'account_code']); 
           
         
 

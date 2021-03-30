@@ -37,8 +37,10 @@ class Config
         define('MODULE_PAGE',URL_CLEAN_LAST);     
 
         define('TAX_RATE',0.15);
+        //'Primary invoice item for contract can be  contract 'client_code' or 'account_code'. 
+        define('INVOICE_SETUP',['contract_item'=>'account_code','last_visit_info'=>false]);
                 
-        $setup_pages = ['division','client_category','location_category','agent','visit_category','errand_category','service_feedback',
+        $setup_pages = ['division','account_code','client_category','location_category','agent','visit_category','errand_category','service_feedback',
                         'service_day','service_round','item_units','service_price','pay_method'];
 
         $setup_link = '';
