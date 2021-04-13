@@ -21,7 +21,7 @@ class ServiceVisit extends Table
         $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract']);
         $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'visit_category WHERE category_id']);
         $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service round','join'=>'name FROM '.TABLE_PREFIX.'service_round WHERE round_id']);
-        $this->addTableCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no']);
+        $this->addTableCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no','required'=>false]);
         $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no','edit'=>false]);
         
         $this->addTableCol(['id'=>'user_id_booked','type'=>'INTEGER','title'=>'User Booked','join'=>'CONCAT(name,": ",email) FROM '.TABLE_USER.' WHERE user_id','edit'=>false,'list'=>false]);

@@ -40,16 +40,21 @@ $date_param['class'] = 'form-control edit_input bootstrap_date';
     <div class="col-sm-3">
     <?php 
     $sql = 'SELECT round_id, name FROM '.TABLE_PREFIX.'service_round WHERE status <> "HIDE" ORDER BY sort';
-    echo Form::sqlList($sql,$db,'round_id',$form['round_id'],$list_param) 
+    echo Form::sqlList($sql,$db,'round_id',$form['round_id'],$list_param); 
     ?>
     </div>
   </div>
 
   <div class="row">
     <div class="col-sm-3">Last visited before:</div>
-    <div class="col-sm-3">
+    <div class="col-sm-2">
     <?php 
-    echo Form::textInput('date_last_visit',$form['date_last_visit'],$date_param)
+    echo Form::textInput('date_last_visit',$form['date_last_visit'],$date_param);
+    ?>
+    </div>
+    <div class="col-sm-1">
+    <?php 
+    echo Form::checkBox('ignore_date_visit',true,$form['ignore_date_visit']).'Ignore date';
     ?>
     </div>
   </div>

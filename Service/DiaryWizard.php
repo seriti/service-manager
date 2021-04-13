@@ -48,6 +48,7 @@ class DiaryWizard extends Wizard
         $this->addVariable(array('id'=>'date_last_visit','type'=>'DATE','title'=>'Date last visited','required'=>true,'new'=>$date_last_visit));
         $this->addVariable(array('id'=>'client_name','type'=>'STRING','title'=>'Client name','required'=>false));
         $this->addVariable(array('id'=>'client_code','type'=>'STRING','title'=>'Client Contract code','required'=>false));
+        $this->addVariable(array('id'=>'ignore_date_visit','type'=>'BOOLEAN','title'=>'Ignore date last visited','required'=>false));
 
         /*
         $this->addVariable(array('id'=>'client_id','type'=>'INTEGER','title'=>'Client','required'=>true));
@@ -86,6 +87,9 @@ class DiaryWizard extends Wizard
             $date_last_visit = $this->form['date_last_visit'];
             $client_name = trim($this->form['client_name']);
             $client_code = trim($this->form['client_code']);
+            
+            if(!isset($_POST['ignore_date_visit'])) $this->form['ignore_date_visit'] = false;
+            $ignore_date_visit = $this->form['ignore_date_visit'];
 
             $table_contract = TABLE_PREFIX.'contract';
             $table_client = TABLE_PREFIX.'client';
@@ -103,14 +107,16 @@ class DiaryWizard extends Wizard
                    'FROM '.$table_contract.' AS C LEFT JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
                    'WHERE C.division_id = "'.$this->db->escapeSql($division_id).'" AND C.round_id = "'.$this->db->escapeSql($round_id).'" AND C.type_id = "'.$this->db->escapeSql($type_id).'" ';
             if($client_name !== '') $sql .= 'AND CL.name LIKE "%'.$this->db->escapeSql($client_name).'%" ';     
-            if($client_code !== '') $sql .= 'AND C.client_code LIKE "%'.$this->db->escapeSql($client_code).'%" ';     
-            $sql .='HAVING (date_last_visit IS NULL OR date_last_visit < "'.$this->db->escapeSql($date_last_visit).'") '.
-                   'ORDER BY C.division_id,C.date_start ';
+            if($client_code !== '') $sql .= 'AND C.client_code LIKE "%'.$this->db->escapeSql($client_code).'%" '; 
+            if(!$ignore_date_visit) $sql .= 'HAVING (date_last_visit IS NULL OR date_last_visit < "'.$this->db->escapeSql($date_last_visit).'") ';  
+            $sql .= 'ORDER BY C.division_id,C.date_start ';
+
             $contracts = $this->db->readSqlArray($sql); 
             if($contracts == 0) {
-                $str = 'No contracts found without a visit since '.$date_last_visit;
-                if($client_name !== '') $str .= '& client name contains text "'.$this->db->escapeSql($client_name).'" ';     
-                if($client_code !== '')  $str .= '& client contract code contains text "'.$this->db->escapeSql($client_code).'" ';   
+                $str = $this->data['division']['name'].' division, '.$this->data['round']['name'].' round : No '.$type_id.' contracts found ';
+                if(!$ignore_date_visit) $str.= ' without a visit since '.$date_last_visit;
+                if($client_name !== '') $str .= ' where client name contains text "'.$this->db->escapeSql($client_name).'" ';     
+                if($client_code !== '')  $str .= ' where contract code contains text "'.$this->db->escapeSql($client_code).'" ';   
                 $this->addError($str);
             } else {
                 //calculate best guesses of next visit
