@@ -101,6 +101,7 @@ class Client extends Table
             if($error_tmp !== '') $this->addError($error_tmp);
         } 
 
+        /*
         if($data['client_code'] != '') {
             $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
                    'WHERE client_code = "'.$this->db->escapeSql($data['client_code']).'" AND client_id <> "'.$this->db->escapeSql($id).'" ';
@@ -114,7 +115,7 @@ class Client extends Table
             $count = $this->db->readSqlValue($sql);
             if($count != 0) $error .= 'Client account code['.$data['account_code'].'] is NOT unique. Another client has been assigned that account code.';
         }
-        
+        */
 
 
     }
@@ -129,8 +130,17 @@ class Client extends Table
             $setup['address_postal'] = $_POST['address_postal'];
 
             Helpers::setupClient($this->db,TABLE_PREFIX,$id,$setup) ;
-        }    
+        } 
 
+        if($data['account_code'] != '') {
+            $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
+                   'WHERE account_code = "'.$this->db->escapeSql($data['account_code']).'" AND client_id <> "'.$this->db->escapeSql($id).'" ';
+            $count = $this->db->readSqlValue($sql);
+            if($count != 0) {
+                $msg .= 'Client account code['.$data['account_code'].'] is NOT unique. '.$count.' clients are also using that account code.';
+                $this->setCache('messages',$msg);
+            }    
+        } 
     }
     
 
