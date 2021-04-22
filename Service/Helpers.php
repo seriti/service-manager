@@ -46,6 +46,24 @@ class Helpers {
         return $record;
     } 
 
+    //get suggested invoice date based on last visit before current date
+    public static function getInvoiceDate($db,$table_prefix,$contract_id) 
+    {
+        $date = date('Y-m-d');
+        $table_visit = $table_prefix.'contract_visit';
+
+        $sql = 'SELECT V.date_visit '.
+               'FROM '.$table_visit.' AS V '.
+               'WHERE V.contract_id = "'.$contract['contract_id'].'" AND '.
+                     'V.status = "COMPLETED" AND '.
+                     'V.date_visit < CURDATE() '.
+               'ORDER BY V.date_visit DESC LIMIT 1';
+        $last_visit_date = $db->readSqlValue($sql,'');
+        if($last_visit_date !== '') $date = $last_visit_date;
+
+        return $date;
+    }
+
     //get contract items & service visit items for invoice creation
     public static function getInvoiceItems($db,$table_prefix,$contract_id,$format = 'ARRAY') 
     {
@@ -63,7 +81,25 @@ class Helpers {
         $contract = self::get($db,$table_prefix,'contract',$contract_id);
 
         
+        //construct primary contract item description
         $contract_info = '';
+       
+        if(INVOICE_SETUP['contract_item'] === 'account_code' and $contract['account_code'] !== '') {
+            $contract_item_code = $contract['account_code'];
+
+            if(INVOICE_SETUP['account_info']) {
+                $sql = 'SELECT description FROM '.$table_account_code.' WHERE code = "'.$contract['account_code'].'" ';
+                $str = $db->readSqlValue($sql,'');
+                if($str === '') $str = 'Account code description NA';
+                $contract_info .= $str;
+            } else {
+                $contract_info .= $contract['type_id'].' contract ';
+            }
+        } else {
+            $contract_item_code = $contract['client_code'];
+            $contract_info .= $contract['type_id'].' contract '.$contract['client_code'];
+        }       
+        
         if(INVOICE_SETUP['last_visit_info']) {
             //get most recent completed(ie NOT invoiced) visit
             $sql = 'SELECT V.visit_id,V.date_visit,V.service_no,V.notes '.
@@ -71,27 +107,13 @@ class Helpers {
                    'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
                    'ORDER BY V.date_visit DESC LIMIT 1';
             $last_visit = $db->readSqlRecord($sql);
-            if($last_visit != 0) $contract_info = ' '.$last_visit['notes'];
+            if($last_visit != 0) $contract_info .= ' '.$last_visit['notes'];
         }
-
-        if(INVOICE_SETUP['contract_item'] === 'account_code' and $contract['account_code'] !== '') {
-            $contract_item_code = $contract['account_code'];
-
-            if(INVOICE_SETUP['account_info']) {
-                $sql = 'SELECT description FROM '.$table_account_code.' WHERE code = "'.$contract['account_code'].'" ';
-                $str = $db->readSqlValue($sql,'');
-                if($str === '') $str = $contract['account_code'];
-                $contract_info .= ' - '.$str;
-            } 
-        } else {
-            $contract_item_code = $contract['client_code'];
-        }       
-        
         
         if($contract['type_id'] === 'SINGLE') {
             $invoice_item = [];
             $invoice_item['code'] = $contract_item_code;
-            $invoice_item['name'] = 'Single Contract: '.$contract['client_code'].$contract_info;
+            $invoice_item['name'] = $contract_info;
             $invoice_item['quantity'] = 1;
             $invoice_item['units'] = '';
             $invoice_item['price'] = $contract['price'];
@@ -202,7 +224,7 @@ class Helpers {
         return $output;
     } 
 
-    public static function saveInvoice($db,$table_prefix,$contract_id,$invoice_note,&$error)
+    public static function saveInvoice($db,$table_prefix,$contract_id,$invoice_note,$invoice_date,&$error)
     {
         $error = '';
         $invoice_id = 0;
@@ -232,7 +254,7 @@ class Helpers {
         $data['discount'] = $invoice['totals']['discount'];
         $data['tax'] = $invoice['totals']['tax'];
         $data['total'] = $invoice['totals']['total'];
-        $data['date'] = date('Y-m-d');
+        $data['date'] = $invoice_date;
         $data['notes'] = $invoice_note;
         $data['status'] = 'NEW';
 

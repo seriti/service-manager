@@ -42,7 +42,7 @@ class Client extends Table
         $this->addAction(['type'=>'popup','text'=>'Contacts','url'=>'client_contact','mode'=>'view','width'=>700,'height'=>600]);
         $this->addAction(['type'=>'popup','text'=>'Locations','url'=>'client_location','mode'=>'view','width'=>600,'height'=>600]);
 
-        $this->addSearch(['client_id','category_id','account_code','name','company_title','company_no','status'],['rows'=>2]);
+        $this->addSearch(['client_id','category_id','account_code','name','company_title','company_no','tax_reference','status'],['rows'=>3]);
 
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'client_category ORDER BY sort');
         $status = ['OK','HIDE'];

@@ -46,6 +46,7 @@ class InvoicePdf extends Pdf
         $block_h = 40;
         $title_h = 10;
         $row_h = 6;
+        $info_h = 6;
 
         //top left, business details
         $pos_x = $this->invoice_margin;
@@ -83,11 +84,11 @@ class InvoicePdf extends Pdf
         //left half text block
         $temp_y = $this->getY();
         $this->Cell($shift_x);
-        $this->MultiCell($block_w/2,$row_h,$this->text_block['business_address'],0,'L',0);
+        $this->MultiCell($block_w/2,$info_h,$this->text_block['business_address'],0,'L',0);
         //right half text block
         $this->SetY($temp_y);
         $this->Cell($block_w/2);
-        $this->MultiCell($block_w/2,$row_h,$this->text_block['business_contact'],0,'L',0);
+        $this->MultiCell($block_w/2,$info_h,$this->text_block['business_contact'],0,'L',0);
          
         //add document detals
         $shift_x = $block_w + $this->block_padding + $this->block_margin;
@@ -115,14 +116,14 @@ class InvoicePdf extends Pdf
         $this->SetY($this->invoice_margin + $block_h + $this->block_padding + $this->block_margin);
         $this->changeFont('TEXT');
         $this->Cell($shift_x);
-        $this->MultiCell($block_w/2,$row_h,$this->text_block['client_detail'],0,'L',0);
+        $this->MultiCell($block_w/2,$info_h,$this->text_block['client_detail'],0,'L',0);
 
-        //add client deliver details
+        //add client deliver to details
         $shift_x = $block_w + $this->block_padding + $this->block_margin;
         $this->SetY($this->invoice_margin + $block_h + $this->block_padding + $this->block_margin);
         $this->changeFont('TEXT');
         $this->Cell($shift_x);
-        $this->MultiCell($block_w/2,$row_h,$this->text_block['client_deliver'],0,'L',0);
+        $this->MultiCell($block_w/2,$info_h,$this->text_block['client_deliver'],0,'L',0);
 
         //add account details
         $pos_x = $this->getX();
@@ -187,6 +188,7 @@ class InvoicePdf extends Pdf
         //add reception details and banking info content
         $this->SetY($start_y);
         $shift_x = $this->block_margin;
+        $this->changeFont('TEXT');
         $this->Cell($shift_x);
         $this->MultiCell($block_w,$row_h,$this->text_block['total_info'],0,'L',0);
         

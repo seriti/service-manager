@@ -125,7 +125,7 @@ class InvoiceWizard extends Wizard
                     $contract['inv_tax'] = number_format($totals['tax'],2);
                     $contract['inv_total'] = number_format($totals['total'],2);
 
-                    $contract['inv_date'] = date('Y-m-d H:i:s');
+                    $contract['inv_date'] = Helpers::getInvoiceDate($this->db,TABLE_PREFIX,$id);
 
                     //NB: == '' will capture null return but not ===            
                     if($contract['inv_date_last'] == '') {
@@ -149,9 +149,11 @@ class InvoiceWizard extends Wizard
                 $name_note = 'note_'.$id;
                 $name_create = 'create_'.$id;
                 $name_action = 'action_'.$id;
+                $name_date = 'date_'.$id;
                        
                 $contract['inv_note'] = Secure::clean('text',$_POST[$name_note]);
                 $contract['inv_action'] = Secure::clean('basic',$_POST[$name_action]);
+                $contract['inv_date'] = Secure::clean('date',$_POST[$name_date]);
                 
                 if(isset($_POST[$name_create]) and $_POST[$name_create] === 'YES') {
                     $contract['inv_create'] = true;
@@ -174,7 +176,7 @@ class InvoiceWizard extends Wizard
             if(!$this->errors_found) {
                 foreach($this->data['contracts'] as $id => $contract) {
                     if($contract['inv_create']) {
-                        $invoice_id = Helpers::saveInvoice($this->db,$this->table_prefix,$id,$contract['inv_note'],$error_tmp);   
+                        $invoice_id = Helpers::saveInvoice($this->db,$this->table_prefix,$id,$contract['inv_note'],$contract['inv_date'],$error_tmp);   
                         if($error_tmp !== '') {
                             $contract['inv_message'] = $error_tmp;
                         } else {

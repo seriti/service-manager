@@ -32,7 +32,8 @@ $visit_days = $data['visit_days'];
     $item_param['class'] = 'form-control';
     
     echo '<table id="item_table" class="table  table-striped table-bordered table-hover table-condensed">'.
-         '<tr><th>Contract ID</th><th>Client</th><th>Code</th><th>Type</th><th>Last invoice</th><th>Subtotal</th><th>Discount</th><th>Tax</th><th>Total</th><th>Notes</th><th>Invoice Action</th><th>Process invoice</th><th>Del.</th></tr>';
+         '<tr><th>Contract ID</th><th>Client</th><th>Code</th><th>Type</th><th>Last invoice</th><th>Subtotal</th><th>Discount</th><th>Tax</th><th>Total</th>'.
+             '<th>Invoice Date</th><th>Notes</th><th>Invoice Action</th><th>Process invoice</th><th>Del.</th></tr>';
     
     $action = ['NONE'=>'Only create invoice PDF','EMAIL'=>'Create invoice PDF & email to client'];
     foreach($data['contracts'] as $id => $contract) {
@@ -40,6 +41,7 @@ $visit_days = $data['visit_days'];
         $name_note = 'note_'.$id;
         $name_create = 'create_'.$id;
         $name_action = 'action_'.$id;
+        $name_date = 'date_'.$id;
         
         $item_link = '<a href="Javascript:open_popup(\'invoice_wizard_item?id='.$id.'\',600,600)">Invoice items</a>';
 
@@ -53,6 +55,7 @@ $visit_days = $data['visit_days'];
              '<td>'.$contract['inv_discount'].'</td>'.
              '<td>'.$contract['inv_tax'].'</td>'.
              '<td>'.$contract['inv_total'].'</td>'.
+             '<td>'.Form::textInput($name_date,$contract['inv_date'],$date_param).'</td>'.
              '<td>'.Form::textAreaInput($name_note,$contract['inv_note'],10,2,$text_param).'</td>'.
              '<td>'.Form::arrayList($action,$name_action,$contract['inv_action'],true,$list_param).'</td>'.
              '<td>'.Form::checkBox($name_create,'YES',$contract['inv_create'],$check_param).'</td>'.

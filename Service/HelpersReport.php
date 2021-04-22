@@ -67,7 +67,7 @@ class HelpersReport {
                      'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
                      'JOIN '.$table_contact.' AS CN ON(C.contact_id = CN.contact_id) '.
                      'LEFT JOIN '.$table_user.' AS U ON(V.user_id_booked = U.user_id) '.
-               'WHERE C.round_id = "'.$db->escapeSql($round_id).'" AND V.status = "CONFIRMED" AND '.
+               'WHERE V.round_id = "'.$db->escapeSql($round_id).'" AND V.status = "CONFIRMED" AND '.
                      'V.date_visit = "'.$db->escapeSql($date).'" AND '.
                      'V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" '.
                'ORDER BY V.time_from';
@@ -333,6 +333,7 @@ class HelpersReport {
         }
     }
 
+    //Currently only supports Paster Invoice import format
     public static function invoiceCsvExport($db,$division_id,$date_from,$date_to,$options = [],&$error)
     {
         $error = '';
@@ -400,6 +401,8 @@ class HelpersReport {
                    'FROM '.$table_invoice_item.' WHERE invoice_id = "'.$db->escapeSql($invoice_id).'" ';
             $items = $db->readSqlArray($sql);
 
+            if(INVOICE_SETUP['tax_inclusive']) $inclusive = 'Y'; else $inclusive = 'N';
+
             $line = [];
             $line[] = 'Header';
             $line[] = Csv::csvPrep($invoice['invoice_no']);     //document number, Character, 8 characters maximum, ignored when importing
@@ -409,7 +412,7 @@ class HelpersReport {
             $line[] = $date['mon'];                             //Period Number, Numeric, 1-13
             $line[] = Date::formatDate($date,'ARRAY','DD-MM-YYYY',['separator'=>'/']); //Date, Character,DD/MM/YYYY
             $line[] = $invoice['client_code']; //Order Number, Character, 25 characters maximum
-            $line[] = 'Y'; //Inc/Exc, Character, Y=Inclusive, N=Exclusive 
+            $line[] = $inclusive; //Inc/Exc, Character, Y=Inclusive, N=Exclusive 
             $line[] = Csv::csvPrep($invoice['discount']); //Discount, Numeric, nominal i assume
             //invoice message 1-3, 3 separate fields of 30 characters maximum each
             //$client_detail = $client['client']['company_title']."\n".$location['address'];
@@ -458,7 +461,10 @@ class HelpersReport {
                 }
                 $line[] = $discount_type; //Discount type, Character, 0=None, 1=Settlement, 2=Invoice, 3=Both
                 $line[] = $discount_pct; //Discount Percentage, Character, Omit decimals, for example 12.5% = 1250
-                $line[] = Csv::csvPrep(substr($item['item_code'],0,15)); //Code, Character, 15 maximum
+
+                //Pastel doesd not recognise "/" code divider that itself exports!!
+                $item_code = str_replace('/','',$item['item_code']);
+                $line[] = Csv::csvPrep(substr($item_code,0,15)); //Code, Character, 15 maximum
                 $line[] = Csv::csvPrep(substr($item['item_desc'],0,40)); //Descriptiom, Character, 40 maximum
                 $line[] = '6'; //Line type, Character, 4=Inventory, 6=GL, 7=Remarks
                 $line[] = ''; //Projects code, Character, 5 maximum
