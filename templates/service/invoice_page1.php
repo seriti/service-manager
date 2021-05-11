@@ -5,6 +5,19 @@ use Seriti\Tools\Html;
 $text_param['class'] = 'form-control edit_input';
 $list_param['class'] = 'form-control edit_input';
 $date_param['class'] = 'form-control edit_input bootstrap_date';
+
+/*
+<div class="row">
+    <div class="col-sm-3">Date references:</div>
+    <div class="col-sm-3">
+    <?php 
+    $date_apply_arr = ['LAST_INVOICE'=>'Last invoice before...','VISIT_COMPLETE'=>'COMPLETED Visits on...'];
+    echo Form::arrayList($date_apply_arr,'apply_date_to',$form['apply_date_to'],true,$list_param); 
+    ?>
+    </div>
+  </div>
+
+*/
 ?>
 
 <div id="order_div">
@@ -45,6 +58,7 @@ $date_param['class'] = 'form-control edit_input bootstrap_date';
     </div>
   </div>
 
+  
   <div class="row">
     <div class="col-sm-3">Last invoiced before:</div>
     <div class="col-sm-3">

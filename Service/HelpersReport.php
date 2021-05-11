@@ -405,10 +405,10 @@ class HelpersReport {
 
             $line = [];
             $line[] = 'Header';
-            $line[] = Csv::csvPrep($invoice['invoice_no']);     //document number, Character, 8 characters maximum, ignored when importing
+            $line[] = Csv::csvPrep($invoice['invoice_no'],['type'=>'STRING']);     //document number, Character, 8 characters maximum, ignored when importing
             $line[] = ' ';                                      //Deleted, Character, Y=Deleted, <space>=not deleted, ignored when importing
             $line[] = 'Y';                                      //Print Status, Character, Y=Printed, <space>=not printed
-            $line[] = Csv::csvPrep($invoice['account_code']);   //Customer Code, Character, 6 characters maximum
+            $line[] = Csv::csvPrep($invoice['account_code'],['type'=>'STRING']);   //Customer Code, Character, 6 characters maximum
             $line[] = $date['mon'];                             //Period Number, Numeric, 1-13
             $line[] = Date::formatDate($date,'ARRAY','DD-MM-YYYY',['separator'=>'/']); //Date, Character,DD/MM/YYYY
             $line[] = $invoice['client_code']; //Order Number, Character, 25 characters maximum

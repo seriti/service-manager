@@ -107,7 +107,7 @@ class Helpers {
                    'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
                    'ORDER BY V.date_visit DESC LIMIT 1';
             $last_visit = $db->readSqlRecord($sql);
-            if($last_visit != 0) $contract_info .= ' '.$last_visit['notes'];
+            if($last_visit != 0) $contract_info .= 'Service Slip No: '.$last_visit['service_no'].'. '.$last_visit['notes'];
         }
         
         if($contract['type_id'] === 'SINGLE') {
@@ -146,7 +146,7 @@ class Helpers {
 
             $invoice_item = [];
             $invoice_item['code'] = $contract_item_code;
-            $invoice_item['name'] = 'Repeat Contract: '.$contract['client_code'].$contract_info;//' Visit-'.$visit_no ;
+            $invoice_item['name'] = $contract_info;//' Visit-'.$visit_no ;
             $invoice_item['quantity'] = 1;
             $invoice_item['units'] = '';
             $invoice_item['price'] = $price;

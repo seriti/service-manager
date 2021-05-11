@@ -22,7 +22,7 @@ class Invoice extends Table
         $this->modifyAccess(['add'=>false]);
 
         $this->addTableCol(['id'=>'invoice_id','type'=>'INTEGER','title'=>'Invoice ID','key'=>true,'key_auto'=>true]);
-        $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract']);
+        $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract','edit_title'=>'Contract ID']);
         $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no']);
         //$this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'name FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
         
@@ -34,6 +34,8 @@ class Invoice extends Table
        
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false,'list'=>true]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
+
+        $this->addSql('JOIN','LEFT JOIN '.TABLE_PREFIX.'contract AS C ON(T.contract_id = C.contract_id)');
                
         $this->addSortOrder('T.invoice_id DESC','Most recent first','DEFAULT');
 
@@ -44,8 +46,9 @@ class Invoice extends Table
         $this->addAction(['type'=>'popup','text'=>'Invoice&nbsp;items','url'=>'invoice_item','mode'=>'view','width'=>600,'height'=>600]);
 
         $this->addSearch(['invoice_id','contract_id','date','total','notes','status'],['rows'=>2]);
+        $this->addSearchXtra('C.client_code','Contract code');
 
-        $this->addSelect('contract_id','SELECT contract_id,client_code FROM '.TABLE_PREFIX.'contract ORDER BY date_start DESC');
+        //$this->addSelect('contract_id','SELECT contract_id,client_code FROM '.TABLE_PREFIX.'contract ORDER BY client_code');
         //$this->addSelect('contact_id','SELECT contact_id, name FROM '.TABLE_PREFIX.'client_contact ORDER BY name');
               
         
@@ -74,7 +77,7 @@ class Invoice extends Table
 
         if($col_id === 'contract_id') {
             $rec = Helpers::getContract($this->db,TABLE_PREFIX,$value,['get'=>'CONTRACT']);
-            $value = $rec['contract']['division'].'<br/>'.
+            $value = $rec['contract']['division'].'&nbsp;('.$value.')<br/>'.
                      '<b>'.$rec['contract']['client'].'</b><br/>'.
                      'Code:<b>'.$rec['contract']['client_code'].'</b><br/>'.
                      $rec['contract']['type_id'];
