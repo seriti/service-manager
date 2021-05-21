@@ -157,6 +157,7 @@ class SetupData extends SetupModuledata
                               `price` decimal(12,2) NOT NULL,
                               `discount` decimal(12,2) NOT NULL,
                               `price_visit` decimal(12,2) NOT NULL,
+                              `price_audit` decimal(12,2) NOT NULL,
                               `price_annual_pct` decimal(12,2) NOT NULL,
                               `time_estimate` int(11) NOT NULL,
                               `visit_day_id` int(11) NOT NULL,

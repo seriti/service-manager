@@ -11,6 +11,8 @@ $date_param['class'] = 'form-control edit_input bootstrap_date input-small';
 
 $visit_days = $data['visit_days'];
 
+$invoice_type = $data['invoice_type'];
+
 
 ?>
 
@@ -43,7 +45,8 @@ $visit_days = $data['visit_days'];
         $name_action = 'action_'.$id;
         $name_date = 'date_'.$id;
         
-        $item_link = '<a href="Javascript:open_popup(\'invoice_wizard_item?id='.$id.'\',600,600)">Invoice items</a>';
+        $link_param = 'id='.$id.'&type='.$invoice_type;
+        $item_link = '<a href="Javascript:open_popup(\'invoice_wizard_item?'.$link_param.'\',600,600)">Invoice items</a>';
 
         echo '<tr>'.
              '<td>'.$id.': '.$item_link.'</td>'.

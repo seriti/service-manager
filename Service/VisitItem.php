@@ -20,7 +20,7 @@ class VisitItem extends Table
 
         $this->addTableCol(['id'=>'data_id','type'=>'INTEGER','title'=>'data ID','key'=>true,'key_auto'=>true,'list'=>false]);
         $this->addTableCol(['id'=>'item_id','type'=>'INTEGER','title'=>'Item','join'=>'name FROM '.TABLE_PREFIX.'service_item WHERE item_id']);
-        $this->addTableCol(['id'=>'quantity','type'=>'INTEGER','title'=>'Quantity']);
+        $this->addTableCol(['id'=>'quantity','type'=>'INTEGER','title'=>'Quantity','new'=>1]);
         $this->addTableCol(['id'=>'price','type'=>'DECIMAL','title'=>'Price','new'=>0,'required'=>false]);
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
@@ -49,7 +49,12 @@ class VisitItem extends Table
     }
 
     /*** EVENT PLACEHOLDER FUNCTIONS ***/
-    //protected function beforeUpdate($id,$context,&$data,&$error) {}
+    protected function beforeUpdate($id,$context,&$data,&$error) 
+    {
+        if($data['price'] != 0 and $data['quantity'] == 0) {
+            $error .= 'You have specified a '.$this->row_name.' price but quantity is = 0. If there is a price then there must be a quantity > 0.';
+        }    
+    }
     //protected function afterUpdate($id,$context,$data) {}
     //protected function beforeDelete($id,&$error) {}
     //protected function afterDelete($id) {}

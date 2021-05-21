@@ -48,6 +48,7 @@ class InvoiceWizard extends Wizard
         $this->addVariable(array('id'=>'date_last_invoice','type'=>'DATE','title'=>'Date last invoiced','required'=>true,'new'=>$date_last_visit));
         $this->addVariable(array('id'=>'client_name','type'=>'STRING','title'=>'Client name','required'=>false));
         $this->addVariable(array('id'=>'client_code','type'=>'STRING','title'=>'Client Contract code','required'=>false));
+        $this->addVariable(array('id'=>'invoice_type','type'=>'STRING','title'=>'Invoice type','new'=>'STANDARD'));
 
         /*
         $this->addVariable(array('id'=>'client_id','type'=>'INTEGER','title'=>'Client','required'=>true));
@@ -79,20 +80,28 @@ class InvoiceWizard extends Wizard
         if($this->page_no == 1) {
             $today = new \DateTime();
             
+            $invoice_type = $this->form['invoice_type'];
             $division_id = $this->form['division_id'];
             $type_id = $this->form['type_id'];
             $round_id = $this->form['round_id'];
             $date_last_invoice = $this->form['date_last_invoice'];
             $client_name = trim($this->form['client_name']);
             $client_code = trim($this->form['client_code']);
+            
+            if($type_id === 'SINGLE' and $invoice_type === 'AUDIT') {
+                $this->addError('Single contracts cannot have invoices for audit fees ');
+            }
+
 
             $table_contract = $this->table_prefix.'contract';
             $table_client = $this->table_prefix.'client';
             $table_visit = $this->table_prefix.'contract_visit';
             $table_invoice = $this->table_prefix.'contract_invoice';
-                        
+            
+            $this->data['invoice_type'] = $invoice_type;            
             $this->data['division'] = Helpers::get($this->db,$this->table_prefix,'division',$division_id);
             $this->data['round'] = Helpers::get($this->db,$this->table_prefix,'service_round',$round_id,'round_id');
+            
 
             //NB: expecting 1:monday/2:tuesday....etc
             $sql = 'SELECT day_id,LOWER(name) FROM '.TABLE_PREFIX.'service_day ORDER BY sort ';
@@ -117,7 +126,7 @@ class InvoiceWizard extends Wizard
                 foreach($contracts as $id => $contract) {
                     $contract['inv_create'] = false;
 
-                    $items = Helpers::getInvoiceItems($this->db,TABLE_PREFIX,$id);
+                    $items = Helpers::getInvoiceItems($this->db,TABLE_PREFIX,$id,'ARRAY',$invoice_type);
                     $totals = $items['totals'];
 
                     $contract['inv_subtotal'] = number_format($totals['subtotal'],2);
@@ -176,7 +185,7 @@ class InvoiceWizard extends Wizard
             if(!$this->errors_found) {
                 foreach($this->data['contracts'] as $id => $contract) {
                     if($contract['inv_create']) {
-                        $invoice_id = Helpers::saveInvoice($this->db,$this->table_prefix,$id,$contract['inv_note'],$contract['inv_date'],$error_tmp);   
+                        $invoice_id = Helpers::saveInvoice($this->db,$this->table_prefix,$id,$contract['inv_note'],$contract['inv_date'],$error_tmp,$this->data['invoice_type']);   
                         if($error_tmp !== '') {
                             $contract['inv_message'] = $error_tmp;
                         } else {

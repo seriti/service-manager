@@ -27,6 +27,15 @@ $date_param['class'] = 'form-control edit_input bootstrap_date';
   <br/>
   </p>
   
+  <div class="row">
+    <div class="col-sm-3">Invoice type:</div>
+    <div class="col-sm-3">
+    <?php 
+    $type_arr = ['STANDARD'=>'Standard invoices','AUDIT'=>'Repeat contracts audit fee'];
+    echo Form::arrayList($type_arr,'invoice_type',$form['invoice_type'],true,$list_param); 
+    ?>
+    </div>
+  </div>
 
   <div class="row">
     <div class="col-sm-3">Division:</div>

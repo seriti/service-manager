@@ -47,19 +47,25 @@ class HelpersReport {
         $table_location = $table_prefix.'client_location';
         $table_client = $table_prefix.'client';
         $table_contact = $table_prefix.'client_contact';
+        $table_round = $table_prefix.'service_round';
         $table_user = TABLE_USER;
 
-        $round = helpers::get($db,$table_prefix,'service_round',$round_id,'round_id');
-        if($round == 0) $error .= 'Invalid round ID['.$round_id.']';
-
+        if($round_id !== 'ALL') {
+            $round = helpers::get($db,$table_prefix,'service_round',$round_id,'round_id');
+            if($round == 0) $error .= 'Invalid round ID['.$round_id.']';
+        } else {
+            $round['name'] = 'ALL';
+        }
+        
         $technician = helpers::get($db,'',$table_user,$user_id_tech,'user_id');
-        if($round == 0) $error .= 'Invalid Technician user ID['.$user_id_tech.']';
+        if($technician == 0) $error .= 'Invalid Technician user ID['.$user_id_tech.']';
         
         //get all confirmed visits        
         $sql = 'SELECT V.visit_id,V.contract_id,V.user_id_booked,U.name AS booked_by,V.category_id,VC.name AS category, '.
                       'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
                       'C.client_code, C.notes_admin,C.notes_client,C.client_id,CL.name AS client,C.location_id,L.name AS location,L.address,  '.
-                      'C.contact_id,CN.name AS contact,CN.position AS contact_position,CN.tel,CN.tel_alt,CN.cell,CN.cell_alt '.
+                      'C.contact_id,CN.name AS contact,CN.position AS contact_position,CN.tel,CN.tel_alt,CN.cell,CN.cell_alt, '.
+                      'R.name AS round '.
                'FROM '.$table_visit.' AS V '.
                      'LEFT JOIN '.$table_category.' AS VC ON(V.category_id = VC.category_id) '.   
                      'JOIN '.$table_contract.' AS C ON(V.contract_id = C.contract_id) '.
@@ -67,13 +73,15 @@ class HelpersReport {
                      'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
                      'JOIN '.$table_contact.' AS CN ON(C.contact_id = CN.contact_id) '.
                      'LEFT JOIN '.$table_user.' AS U ON(V.user_id_booked = U.user_id) '.
-               'WHERE V.round_id = "'.$db->escapeSql($round_id).'" AND V.status = "CONFIRMED" AND '.
+                     'LEFT JOIN '.$table_round.' AS R ON(V.round_id = R.round_id) '.
+               'WHERE V.status = "CONFIRMED" AND '.
                      'V.date_visit = "'.$db->escapeSql($date).'" AND '.
-                     'V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" '.
-               'ORDER BY V.time_from';
+                     'V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" ';
+        if($round_id !== 'ALL') $sql .= 'AND V.round_id = "'.$db->escapeSql($round_id).'" ';
+        $sql .= 'ORDER BY V.time_from';
 
         $visits = $db->readSqlArray($sql,false);
-        if($visits == 0) $error .= 'No CONFIRMED diary visits found for round and technician on date '.$date;
+        if($visits == 0) $error .= 'No CONFIRMED diary visits found for technician on date '.$date;
         
         if($error !== '') return false;
 

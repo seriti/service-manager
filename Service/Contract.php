@@ -71,12 +71,14 @@ class Contract extends Table
             $this->addTableCol(['id'=>'time_estimate','type'=>'INTEGER','title'=>'Time estimate(minutes)','new'=>60]);
             $this->addTableCol(['id'=>'price','type'=>'DECIMAL','title'=>'Price initial visit']);
             $this->addTableCol(['id'=>'price_visit','type'=>'DECIMAL','title'=>'Price per visit']); 
+            $this->addTableCol(['id'=>'price_audit','type'=>'DECIMAL','title'=>'Price per audit']); 
             $this->addTableCol(['id'=>'price_annual_pct','type'=>'DECIMAL','title'=>'Price annual pct','new'=>0]);  
 
             $search = ['contract_id','division_id','client_id','client_code','contact_id','round_id','agent_id',
                        'user_id_responsible','user_id_sold','user_id_signed','user_id_checked','signed_by',
                        'date_signed','date_renew','no_months','pay_method_id',
-                       'visit_day_id','price','price_annual_pct','notes_admin','notes_client','status'];
+                       'visit_day_id','price','price_visit','price_audit','price_annual_pct','notes_admin','notes_client','status'];
+            $search_rows = 6; 
         }
 
         if($param['type'] === 'SINGLE') {
@@ -88,6 +90,8 @@ class Contract extends Table
                        'user_id_responsible','user_id_sold','user_id_signed','user_id_checked','signed_by',
                        'date_signed','pay_method_id',
                        'price','notes_admin','notes_client','status'];
+
+            $search_rows = 5; 
         }
 
         $this->addTableCol(['id'=>'warranty_months','type'=>'INTEGER','title'=>'Warranty months','new'=>12]);
@@ -110,9 +114,8 @@ class Contract extends Table
         //popups
         $this->addAction(['type'=>'popup','text'=>'Items','url'=>'contract_item','mode'=>'view','width'=>600,'height'=>600]);
         $this->addAction(['type'=>'popup','text'=>'Visits','url'=>'contract_visit','mode'=>'view','width'=>600,'height'=>600]);
-
         
-        $search_rows = 5;           
+                  
         $this->addSearch($search,['rows'=>$search_rows]);
                 
         $this->addSelect('client_id','SELECT client_id, name FROM '.TABLE_PREFIX.'client ORDER BY name');

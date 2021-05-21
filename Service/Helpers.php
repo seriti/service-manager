@@ -65,7 +65,7 @@ class Helpers {
     }
 
     //get contract items & service visit items for invoice creation
-    public static function getInvoiceItems($db,$table_prefix,$contract_id,$format = 'ARRAY') 
+    public static function getInvoiceItems($db,$table_prefix,$contract_id,$format = 'ARRAY',$invoice_type = 'STANDARD') 
     {
         $table_visit = $table_prefix.'contract_visit';
         $table_visit_item = $table_prefix.'visit_item';
@@ -128,21 +128,29 @@ class Helpers {
         }
 
         if($contract['type_id'] === 'REPEAT') {
-            /*
-            $sql = 'SELECT COUNT(*) FROM '.$table_visit.' '.
-                   'WHERE contract_id = "'.$contract['contract_id'].'" AND (status = "COMPLETED" OR status = "INVOICED")';
-            $count = $db->readSqlValue($sql,0);
-            */
-            //NB: no_visits must be updated by invoice creation
-            //NOT sure if i want to get too clever, can just count actual visits.
-            //use no_visits to determine frequency of visits rather than visit counter??
-            if($contract['no_visits'] == 0) {
-                $price = $contract['price'];
-                //$visit_no = 1;
+            
+            if($invoice_type === 'AUDIT') {
+                $price = $contract['price_audit'];
+                $contract_info = 'Audit Fee';
             } else {
-                //$visit_no = $contract['no_visits'] + 1;
-                $price = $contract['price_visit'];
-            }    
+                /*
+                $sql = 'SELECT COUNT(*) FROM '.$table_visit.' '.
+                       'WHERE contract_id = "'.$contract['contract_id'].'" AND (status = "COMPLETED" OR status = "INVOICED")';
+                $count = $db->readSqlValue($sql,0);
+                */
+                //NB: no_visits must be updated by invoice creation
+                //NOT sure if i want to get too clever, can just count actual visits.
+                //use no_visits to determine frequency of visits rather than visit counter??
+                if($contract['no_visits'] == 0) {
+                    $price = $contract['price'];
+                    //$visit_no = 1;
+                } else {
+                    //$visit_no = $contract['no_visits'] + 1;
+                    $price = $contract['price_visit'];
+                }    
+
+            }
+           
 
             $invoice_item = [];
             $invoice_item['code'] = $contract_item_code;
@@ -156,13 +164,18 @@ class Helpers {
         }
 
         
+        //NB: audit fee is a single fee excluding all standard contract items.
+        if($invoice_type === 'AUDIT') {
+            $contract_items = 0;
+        } else {
+            $sql = 'SELECT C.item_id,I.name,I.code,C.price,U.name AS units,C.notes '.
+                   'FROM '.$table_contract_item.' AS C LEFT JOIN '.$table_item.' AS I ON(C.item_id = I.item_id) '.
+                         'LEFT JOIN '.$table_units.' AS U ON(I.units_id = U.units_id) '.
+                   'WHERE C.contract_id = "'.$contract['contract_id'].'" AND C.price > 0 ';
+            $contract_items = $db->readSqlArray($sql);
+        }
 
-        $sql = 'SELECT C.item_id,I.name,I.code,C.price,U.name AS units,C.notes '.
-               'FROM '.$table_contract_item.' AS C LEFT JOIN '.$table_item.' AS I ON(C.item_id = I.item_id) '.
-                     'LEFT JOIN '.$table_units.' AS U ON(I.units_id = U.units_id) '.
-               'WHERE C.contract_id = "'.$contract['contract_id'].'" AND C.price > 0 ';
-        $contract_items = $db->readSqlArray($sql);
-
+        
         //NB: this assumes that contract visit record status is updated after invoicing, and also that a service slip no has been captured
         //NB2: status should be set to INVOICED after invoices processed
         $sql = 'SELECT VI.data_id,V.date_visit,V.service_no,VI.item_id,I.name,I.code,U.name AS units,VI.quantity,VI.price,VI.notes '.
@@ -224,7 +237,7 @@ class Helpers {
         return $output;
     } 
 
-    public static function saveInvoice($db,$table_prefix,$contract_id,$invoice_note,$invoice_date,&$error)
+    public static function saveInvoice($db,$table_prefix,$contract_id,$invoice_note,$invoice_date,&$error,$invoice_type = 'STANDARD')
     {
         $error = '';
         $invoice_id = 0;
@@ -243,7 +256,7 @@ class Helpers {
         $invoice_dup=$db->readSqlRecord($sql);
         if($invoice_dup!=0) $error .=' Invoice No['.$invoice_no.'] has been used before!'; 
            
-        $invoice = self::getInvoiceItems($db,$table_prefix,$contract_id,'ARRAY'); 
+        $invoice = self::getInvoiceItems($db,$table_prefix,$contract_id,'ARRAY',$invoice_type); 
 
         if($error !== '') return false;
 
@@ -914,39 +927,54 @@ class Helpers {
     {
         $error = '';
 
-        if(!isset($options['format'])) $options['format'] = 'TIME_DATE'; //'DATE_TIME' other option
+        if(!isset($options['format'])) $options['format'] = 'TIME_DATE'; //'DATE_TIME' other option but NOT supported currently by calendar class
+
+        if(!isset($options['time_from'])) $options['time_from'] = '00:00';
+        if(!isset($options['time_to'])) $options['time_to'] = '24:00';
 
         $table_visit = $table_prefix.'contract_visit';
         $table_contract = $table_prefix.'contract';
         $table_client = $table_prefix.'client';
         $table_user = TABLE_USER;
+        $table_round = $table_prefix.'service_round';
                 
         $calendar = new Calendar();
                 
         $sql = 'SELECT V.visit_id,V.contract_id,V.user_id_booked,V.user_id_tech,U.name AS technician, '.
                       'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
-                      'C.client_code, C.client_id,CL.name AS client '.
+                      'C.client_code, C.client_id,CL.name AS client,R.name AS round '.
                'FROM '.$table_visit.' AS V '.
                      'JOIN '.$table_contract.' AS C ON(V.contract_id = C.contract_id) '.
                      'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
                      'LEFT JOIN '.$table_user.' AS U ON(V.user_id_tech = U.user_id) '.
-               'WHERE C.round_id = "'.$db->escapeSql($round_id).'" AND V.date_visit >= "'.$db->escapeSql($date_from).'" AND V.date_visit <= "'.$db->escapeSql($date_to).'" ';
+                     'LEFT JOIN '.$table_round.' AS R ON(V.round_id = R.round_id) '.
+               'WHERE V.date_visit >= "'.$db->escapeSql($date_from).'" AND V.date_visit <= "'.$db->escapeSql($date_to).'" AND '.
+                     'V.time_from >= "'.$options['time_from'].'" AND V.time_from <= "'.$options['time_to'].'" ';
+        if($round_id !== 'ALL') $sql .= 'AND C.round_id = "'.$db->escapeSql($round_id).'" ';       
         if($user_id_tech != 'ALL') $sql .= ' AND V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" ';
         if($status != 'ALL') $sql .= ' AND V.status = "'.$db->escapeSql($status).'" ';
         
+
+
         $entries = $db->readSqlArray($sql,false);
-        if($entries == 0) $error .= 'No diary entries found over period from '.$date_from.' to '.$date_to;
+        if($entries == 0) {
+            $error .= 'No diary entries found over period from '.$date_from.' to '.$date_to.' & '.
+                      'within time period from '.$options['time_from'].' to '.$options['time_to'];
+        }               
         
         //if($error !== '') return false;
 
         $cal_options = [];
-        //$cal_options['round_id'] = $round_id;
         foreach($entries as $entry) {
             $html = self::formatAppointment($entry);
             $calendar->addAppointment($entry['date_visit'],$entry['time_from'],$entry['time_to'],$html,$cal_options);
         }
 
         $cal_options = [];
+        $cal_options['start'] = Date::calcMinutes('00:00',$options['time_from']);
+        $cal_options['end'] = Date::calcMinutes('00:00',$options['time_to']);
+        $cal_options['interval'] = $options['interval'];
+
         $html = $calendar->show($options['format'],$date_from,$date_to,$cal_options);
 
         return $html;

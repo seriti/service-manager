@@ -40,6 +40,8 @@ class Config
         define('TAX_RATE',0.15);
         //'Primary invoice item for contract can be  contract 'client_code' or 'account_code'. 
         define('INVOICE_SETUP',['contract_item'=>'account_code','account_info'=>true,'last_visit_info'=>true,'tax_inclusive'=>false]);
+        //interval defined in minutes
+        define('DIARY_SETUP',['from_time'=>'06:00','to_time'=>'20:00','interval'=>15,'days'=>7]);
                 
         $setup_pages = ['division','account_code','client_category','location_category','agent','visit_category','errand_category','service_feedback',
                         'service_day','service_round','item_units','service_price','pay_method'];

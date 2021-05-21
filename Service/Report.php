@@ -67,7 +67,7 @@ class Report extends ReportTool
         if($id === 'select_round') {
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
-            //$param['xtra'] = ['ALL'=>'All locations'];
+            $param['xtra'] = ['ALL'=>'All rounds'];
             $sql = 'SELECT round_id,name FROM '.TABLE_PREFIX.'service_round WHERE status <> "HIDE" ORDER BY sort'; 
             if(isset($form['round_id'])) $round_id = $form['round_id']; else $round_id = '';
             $html .= 'Round:&nbsp;'.Form::sqlList($sql,$this->db,'round_id',$round_id,$param);

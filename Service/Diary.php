@@ -10,6 +10,9 @@ use App\Service\Helpers;
 class Diary extends ReportTool
 {
     protected $status_arr = ['ALL'=>'ALL entries','NEW'=>'Preliminary entries only','CONFIRMED'=>'Confirmed entries only','COMPLETED'=>'Completed visits only'];
+    protected $time_arr = ['00:00'=>'0am','01:00'=>'1am','02:00'=>'2am','03:00'=>'3am','04:00'=>'4am','05:00'=>'5am','06:00'=>'6am','07:00'=>'7am','08:00'=>'8am',
+                           '09:00'=>'9am','10:00'=>'10am','11:00'=>'11am','12:00'=>'12am','13:00'=>'1pm','14:00'=>'2pm','15:00'=>'3pm','16:00'=>'4pm','17:00'=>'5pm',
+                           '18:00'=>'6pm','19:00'=>'7pm','20:00'=>'8pm','21:00'=>'9pm','22:00'=>'10pm','23:00'=>'11pm','24:00'=>'12pm'];
 
     //configure
     public function setup() 
@@ -20,7 +23,7 @@ class Diary extends ReportTool
         $this->always_list_reports = true;
         $this->submit_title = 'View Diary';
 
-        $param = ['input'=>['select_round','select_technician','select_date_period','select_status']];
+        $param = ['input'=>['select_round','select_technician','select_date_period','select_time_period','select_status']];
         $this->addReport('DIARY_DAYS','Daily round diary',$param); 
        
         
@@ -28,6 +31,7 @@ class Diary extends ReportTool
         $this->addInput('select_round','');
         $this->addInput('select_technician','');
         $this->addInput('select_date_period','');
+        $this->addInput('select_time_period','');
         $this->addInput('select_month_period','');
         $this->addInput('select_status','');
     }
@@ -40,7 +44,7 @@ class Diary extends ReportTool
         if($id === 'select_round') {
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
-            //$param['xtra'] = ['ALL'=>'All locations'];
+            $param['xtra'] = ['ALL'=>'All Rounds'];
             $sql = 'SELECT round_id,name FROM '.TABLE_PREFIX.'service_round WHERE status <> "HIDE" ORDER BY sort'; 
             if(isset($form['round_id'])) $round_id = $form['round_id']; else $round_id = '';
             $html .= 'Round:&nbsp;'.Form::sqlList($sql,$this->db,'round_id',$round_id,$param);
@@ -78,13 +82,24 @@ class Diary extends ReportTool
             $param = [];
             $param['class'] = $this->classes['date'].' input-inline';
             if(isset($form['date_from'])) $date_from = $form['date_from']; else $date_from = date('Y-m-d');
-            $html .= 'From:&nbsp;'.Form::textInput('date_from',$date_from,$param);
+            $html .= 'Date from:&nbsp;'.Form::textInput('date_from',$date_from,$param);
        
             $param = [];
             $param['class'] = $this->classes['date'].' input-inline';
             if(isset($form['date_to'])) $date_to = $form['date_to']; else $date_to = date('Y-m-d',mktime(0,0,0,date('m'),date('j')+7,date('Y')));
             $html .= 'To:&nbsp;'.Form::textInput('date_to',$date_to,$param);
-        }      
+        }   
+
+        if($id === 'select_time_period') {
+            $param = [];
+            $param['class'] = 'form-control input-small input-inline';
+            $key_assoc = true;
+            if(isset($form['time_from'])) $time_from = $form['time_from']; else $time_from = DIARY_SETUP['from_time']; 
+            $html .= 'Time from:&nbsp;'.Form::arrayList($this->time_arr,'time_from',$time_from,$key_assoc,$param);
+                   
+            if(isset($form['time_to'])) $time_to = $form['time_to']; else $time_to = DIARY_SETUP['to_time'];
+            $html .= 'To:&nbsp;'.Form::arrayList($this->time_arr,'time_to',$time_to,$key_assoc,$param);
+        }    
         
         if($id === 'select_status') {
             $param = [];
@@ -102,30 +117,51 @@ class Diary extends ReportTool
         $html = '';
         $error = '';
         $options = [];
-        
-        
+                
         
         if($id === 'DIARY_DAYS') {
-            $html = Helpers::roundDailyDiary($this->db,TABLE_PREFIX,$form['round_id'],$form['user_id_tech'],$form['status'],$form['date_from'],$form['date_to'],$options,$error);
-            //NB: error should not stop display of calendar
-            if($error !== '') $this->addMessage($error);
-
-            $round = Helpers::get($this->db,TABLE_PREFIX,'service_round',$form['round_id'],'round_id'); 
-            $href = "javascript:open_popup('diary_visit?mode=new&round_id=".$form['round_id']."',400,600)";
-
-            if($form['user_id_tech'] === 'ALL') {
-                $tech_str = 'for <strong>All</strong> technicians';
-            } else {
-                $user = $this->container->user->getUser('ID',$form['user_id_tech']);
-                $tech_str = 'for technician <strong>'.$user['name'].'</strong>';
+            if($form['round_id'] === 'ALL' and $form['user_id_tech'] === 'ALL') {
+                $this->addError('You cannot view Diary for ALL rounds and ALL technicians. Either select a technician and ALL rounds, or select a round and ALL technicians');
             }
-            
-            $title = '<h2><a href="'.$href.'"><input type="button" value="Add an entry" class="'.$this->classes['button'].'"></a> '.
-                     $this->status_arr[$form['status']].' on <strong>'.$round['name'].'</strong> round from <strong>'.Date::formatDate($form['date_from']).'</strong> to <strong>'.Date::formatDate($form['date_to']).'</strong> '.$tech_str;
-                     '</h2>';
 
-            
-            $html = $title.$html;
+            $minutes = Date::calcMinutes($form['time_from'],$form['time_to']);
+            if($minutes < 60) {
+                $this->addError('Time to['.$this->time_arr[$form['time_to']].'] must be at least 1 hour after time from['.$this->time_arr[$form['time_from']].'].');
+            }
+
+            if(!$this->errors_found) {
+                $options['time_from'] = $form['time_from'];
+                $options['time_to'] = $form['time_to'];
+                $options['interval'] = DIARY_SETUP['interval'];
+
+                $html = Helpers::roundDailyDiary($this->db,TABLE_PREFIX,$form['round_id'],$form['user_id_tech'],$form['status'],$form['date_from'],$form['date_to'],$options,$error);
+                //NB: error should not stop display of calendar
+                if($error !== '') $this->addMessage($error);
+
+                if($form['round_id'] === 'ALL') {
+                    $round_str = '<strong>ALL</strong> rounds';
+                    $link_str = '';
+                } else {
+                    $round = Helpers::get($this->db,TABLE_PREFIX,'service_round',$form['round_id'],'round_id'); 
+                    $round_str = '<strong>'.$round['name'].'</strong> round';
+                    $href = "javascript:open_popup('diary_visit?mode=new&round_id=".$form['round_id']."',400,600)";
+                    $link_str = '<a href="'.$href.'"><input type="button" value="Add an entry" class="'.$this->classes['button'].'"></a>';
+                }
+                
+                if($form['user_id_tech'] === 'ALL') {
+                    $tech_str = 'for <strong>All</strong> technicians';
+                } else {
+                    $user = $this->container->user->getUser('ID',$form['user_id_tech']);
+                    $tech_str = 'for technician <strong>'.$user['name'].'</strong>';
+                }
+                
+                $title = '<h2>'.$link_str.' '.$this->status_arr[$form['status']].' on '.$round_str.' '.
+                         'from <strong>'.Date::formatDate($form['date_from']).'</strong> to <strong>'.Date::formatDate($form['date_to']).'</strong> '.$tech_str;
+                         '</h2>';
+
+                
+                $html = $title.$html;
+            }    
         }
 
 

@@ -24,8 +24,9 @@ class InvoiceWizardItemController
         $db = $this->container->mysql;
 
         $contract_id = Secure::clean('integer',$_GET['id']);
+        $invoice_type = Secure::clean('basic',$_GET['type']);
         
-        $html = Helpers::getInvoiceItems($db,TABLE_PREFIX,$contract_id,'HTML');
+        $html = Helpers::getInvoiceItems($db,TABLE_PREFIX,$contract_id,'HTML',$invoice_type);
 
         $template['html'] = $html;
         $template['title'] = MODULE_LOGO.'Invoice wizard items';
