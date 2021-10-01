@@ -26,6 +26,160 @@ use App\Service\Helpers;
 //static functions for service module
 class HelpersReport {
     
+    public static function workPlanning($db,$mode,$division_id,$date_from,$date_to,$options,&$error)
+    {
+        $error = '';
+        $table_prefix = TABLE_PREFIX;
+        
+        if(!isset($options['output'])) $options['output'] = 'BROWSER';
+        if(!isset($options['format'])) $options['format'] = 'HTML';
+        $options['format'] = strtoupper($options['format']);
+
+        if(!isset($options['status'])) $options['status'] = 'ALL';
+        if(!isset($options['type_id'])) $options['type_id'] = 'ALL';
+        
+        $date_last_visit = $date_form;
+        $ignore_date_visit = true;
+
+        
+        $sql_where = 'C.date_start < "'.$db->escapeSql($date_to).'" ';
+
+        if($options['type_id'] !== 'ALL') $sql_where .= 'AND C.type_id = "'.$db->escapeSql($options['type_id']).'" ';
+
+        if($options['status'] !== 'ALL') $sql_where .= 'AND C.status = "'.$db->escapeSql($options['status']).'" ';
+
+        if($division_id === 'ALL') {
+            $base_doc_name = 'ALL_divisions';
+            $page_title = 'All divisions';
+        } else {
+            $sql_where .= 'AND C.division_id = "'.$db->escapeSql($division_id).'" ';
+
+            $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
+            if($division == 0) $error .= 'Invalid Division['.$division_id.'] selected.';
+
+            $base_doc_name = str_replace(' ','_',$division['name']);
+            $page_title = $division['name'];
+        }  
+
+        $base_doc_name .= '_'.$options['status'].'_Contracts_without_';
+        $page_title .= ' '.$options['status'].' Contracts without ';     
+        
+        if($error !== '') return false;
+
+        $table_visit = $table_prefix.'contract_visit';
+        $table_invoice = $table_prefix.'contract_invoice';
+        $table_category = $table_prefix.'visit_category';
+        $table_contract = $table_prefix.'contract';
+        $table_location = $table_prefix.'client_location';
+        $table_client = $table_prefix.'client';
+        $table_contact = $table_prefix.'client_contact';
+        $table_round = $table_prefix.'service_round';
+        $table_user = TABLE_USER;
+             
+        
+        $sql = 'SELECT C.contract_id,C.type_id,C.client_code,CL.name AS client,C.date_start,C.no_assistants,C.notes_admin, '.
+                      'R.name AS round, C.price_visit,C.price_audit,C.no_visits, '.
+                      '(SELECT COUNT(*) FROM '.$table_visit.' AS V WHERE V.contract_id = C.contract_id AND V.status IN("COMPLETED","INVOICED")) AS visit_count,  '.
+                      '(SELECT COUNT(*) FROM '.$table_invoice.' AS I WHERE I.contract_id = C.contract_id) AS invoice_count,  '.
+                      '(SELECT V.date_visit FROM '.$table_visit.' AS V WHERE V.contract_id = C.contract_id AND V.status IN("COMPLETED","INVOICED") ORDER BY V.date_visit DESC LIMIT 1) AS date_last_visit, '.
+                      '(SELECT DATE(I.date) FROM '.$table_invoice.' AS I WHERE I.contract_id = C.contract_id ORDER BY I.date DESC LIMIT 1) AS date_last_invoice '.
+               'FROM '.$table_contract.' AS C LEFT JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
+                     'LEFT JOIN '.$table_round.' AS R ON (C.round_id = R.round_id) '.
+               'WHERE '.$sql_where;
+        if(!$ignore_date_visit) $sql .= 'HAVING (date_last_visit IS NULL OR date_last_visit < "'.$db->escapeSql($date_last_visit).'") ';  
+        $sql .= 'ORDER BY R.name, C.date_start ';
+
+
+        $contracts = $db->readSqlArray($sql,false);
+        if($contracts == 0) $error .= 'No contracts found matching your criteria';
+        
+        if($error !== '') return false;
+
+        $base_doc_name = str_replace(' ','_',$division['name']).'_division_work_due_from_'.
+                         Date::formatDate($date_from).'_to_'.Date::formatDate($date_to).'_on_'.date('Y-m-d');
+
+        $page_title = $division['name'].' work due from '.Date::formatDate($date_from).' to '.Date::formatDate($date_to);
+        
+        //block table parameters
+        $col_width=array(50,30,20,10,20,20,10,20,10);
+        $col_type=array('','','','','','DATE','','DATE','');
+
+        $data = [];
+        $r = 0;
+        $data[0][$r] = 'Client';
+        $data[1][$r] = 'Contract code';
+        $data[2][$r] = 'Round';
+        $data[3][$r] = 'Contract visits';
+        $data[4][$r] = 'Price/visit';
+        $data[5][$r] = 'Last visit';
+        $data[6][$r] = 'Visits done';
+        $data[7][$r] = 'Last Invoice';
+        $data[8][$r] = 'Invoices issued';
+                
+        foreach($contracts as $contract) {
+            $r ++;
+            $data[0][$r] = $contract['client'];
+            $data[1][$r] = $contract['client_code'];
+            $data[2][$r] = $contract['round'];
+            $data[3][$r] = $contract['no_visits'];
+            $data[4][$r] = $contract['price_visit'];
+            $data[5][$r] = $contract['date_last_visit'];
+            $data[6][$r] = $contract['visit_count'];
+            $data[7][$r] = $contract['date_last_invoice'];
+            $data[8][$r] = $contract['invoice_count'];
+        }
+        
+        if($options['format'] === 'PDF') {
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
+            
+            $pdf = new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            
+            $pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options = [];
+            $pdf_options['font_size'] = 8;
+            $row_h = 6;
+
+            $pdf->changeFont('TEXT');
+            $pdf->arrayDrawTable($data,$row_h,$col_width,$col_type,'L',$pdf_options);
+            $pdf->Ln($row_h);
+                                    
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($doc_name,'D');    
+            exit;
+        }    
+
+        if($options['format'] === 'HTML') {
+            $html_options = [];
+            $html_options['col_type'] = $col_type;
+            $html = Html::arrayDumpHtml2($data,$html_options);
+
+            return $html;
+        }
+
+        if($options['format'] === 'CSV') {
+            $doc_name = $base_doc_name.'.csv';
+            $csv_data = Csv::arrayDumpCsv($data);
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD','csv');
+            exit;
+        }  
+    
+    }
+
+
     public static function dailyTechWorksheet($db,$round_id,$date,$user_id_tech,$options = [],&$error)
     {
         $error = '';
@@ -177,13 +331,18 @@ class HelpersReport {
                 $r ++;
                 */
 
+                $r ++;
                 $data[0][$r] = 'Visit notes:';
                 $data[1][$r] = $visit['notes'];
                 $data[2][$r] = '';
 
                 $pdf->changeFont('H1');
                 $pdf->Cell(20,$row_h,'Client :',0,0,'R',0);
-                $pdf->Cell(20,$row_h,$visit['client'].' @'.$visit['location'].' Contract code:'.$visit['client_code'],0,0,'L',0);
+                $pdf->Cell(20,$row_h,$visit['client'].', Contract code:'.$visit['client_code'],0,0,'L',0);
+                $pdf->Ln($row_h);
+
+                $pdf->Cell(20,$row_h,'Location :',0,0,'R',0);
+                $pdf->Cell(20,$row_h,$visit['location'],0,0,'L',0);
                 $pdf->Ln($row_h);
 
                 $pdf->changeFont('H2');
@@ -248,40 +407,69 @@ class HelpersReport {
         $table_invoice = TABLE_PREFIX.'contract_invoice';
         $table_visit = TABLE_PREFIX.'contract_visit';
 
-        $base_doc_name = 'Contracts_without_';
-        $page_title = 'Contracts without ';
+        $date_from = $db->escapeSql($options['date_from']);
+        $date_to = $db->escapeSql($options['date_to']);
+
+        if(!isset($options['status'])) $options['status'] = 'ALL';
+        if(!isset($options['type_id'])) $options['type_id'] = 'ALL';
 
         $sql_where = '';
-        if($division_id !== 'ALL') $sql_where .= 'AND D.division_id = "'.$db->escapeSql($division_id).'" ';
+        $type_str = '';
+
+        if($options['type_id'] !== 'ALL') {
+            $sql_where .= 'AND C.type_id = "'.$db->escapeSql($options['type_id']).'" ';
+            $type_str = $options['type_id'].'_'; 
+        }    
+        
+        if($options['status'] !== 'ALL') $sql_where .= 'AND C.status = "'.$db->escapeSql($options['status']).'"  ';
+        
+        if($division_id === 'ALL') {
+            $base_doc_name = 'ALL_divisions';
+            $page_title = 'All divisions';
+        } else {
+            $sql_where .= 'AND D.division_id = "'.$db->escapeSql($division_id).'" ';
+
+            $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
+            if($division == 0) $error .= 'Invalid Division['.$division_id.'] selected.';
+
+            $base_doc_name = str_replace(' ','_',$division['name']);
+            $page_title = $division['name'];
+        }
+
+        $base_doc_name .= '_'.$options['status'].'_'.$type_str.'Contracts_without_';
+        $page_title .= ' '.$options['status'].' '.$type_str.'Contracts without ';  
 
         $sql = 'SELECT C.contract_id,D.name AS division,C.type_id AS type,CL.name AS client,C.client_code,C.date_signed '.
                'FROM '.$table_contract.' AS C '.
                'JOIN '.$table_division.' AS D ON(C.division_id = D.division_id) '.
                'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) ';
         if($type === 'INVOICE') {
-            $base_doc_name .= 'invoices';
-            $page_title .= 'invoices';
+            $base_doc_name .= 'invoices_';
+            $page_title .= 'invoices ';
             //pdf table parameters
             $col_width=array(20,30,20,30,20,20);
             $col_type=array('','','','','','DATE');
 
 
-            $sql .= 'LEFT JOIN '.$table_invoice.' AS I ON(C.contract_id = I.contract_id )'.
+            $sql .= 'LEFT JOIN '.$table_invoice.' AS I ON(C.contract_id = I.contract_id AND I.date >= "'.$date_from.'" AND I.date <= "'.$date_to.'") '.
                     'WHERE I.invoice_no IS NULL '.$sql_where.
                     'ORDER BY D.name, C.date_signed DESC ';
         }
 
         if($type === 'VISIT') {
-            $base_doc_name .= 'visits';
-            $page_title .= 'visits';
+            $base_doc_name .= 'visits_';
+            $page_title .= 'visits ';
             //pdf table parameters
             $col_width=array(20,30,20,30,20,20);
             $col_type=array('','','','','','DATE');
 
-            $sql .= 'LEFT JOIN '.$table_visit.' AS V ON(C.contract_id = V.contract_id )'.
+            $sql .= 'LEFT JOIN '.$table_visit.' AS V ON(C.contract_id = V.contract_id AND V.date_visit >= "'.$date_from.'" AND V.date_visit <= "'.$date_to.'") '.
                     'WHERE V.visit_id IS NULL '.$sql_where.
                     'ORDER BY D.name, C.date_signed DESC ';
         }
+
+        $base_doc_name .= 'from_'.$date_from.'_to_'.$date_to;
+        $page_title .= 'from '.Date::formatDate($date_from).' to '.Date::formatDate($date_to);
 
         $result = $db->readSqlResult($sql);
         if($result == 0) $error .= 'NO contracts found matching your criteria!';
@@ -341,7 +529,7 @@ class HelpersReport {
         }
     }
 
-    //Currently only supports Paster Invoice import format
+    //Currently only supports Pastel Invoice import format and orkin specific settings, can generalise later
     public static function invoiceCsvExport($db,$division_id,$date_from,$date_to,$options = [],&$error)
     {
         $error = '';
@@ -360,6 +548,9 @@ class HelpersReport {
         } else {
             $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
             if($division == 0) $error .= 'Invalid Division['.$division_id.'] selected.';
+
+            //ttd: need to get this code directly from division setting rather than using tax_free flag
+            if($division['tax_free']) $tax_type = '00'; else $tax_type = '15';
         }    
         
         if($error !== '') return false;
@@ -398,11 +589,12 @@ class HelpersReport {
             
             $location = explode("\n",$invoice['location_address']);
             for($i = 0; $i < 3; $i++) {
-                if(!isset($location[$i])) $location[$i] = ''; else $location[$i] = str_replace("\r",'',$location[$i]);
+                //Pastel does not recognise " as an escape character so "" will blow it
+                if(!isset($location[$i])) $location[$i] = ''; else $location[$i] = str_replace(["\r",'"'],'',$location[$i]);
             }
             $deliver_to = explode("\n",$client['location']['INVOICE']['address']);
             for($i = 0; $i < 5; $i++) {
-                if(!isset($deliver_to[$i])) $deliver_to[$i] = ''; else $deliver_to[$i] = str_replace("\r",'',$deliver_to[$i]);
+                if(!isset($deliver_to[$i])) $deliver_to[$i] = ''; else $deliver_to[$i] = str_replace(["\r",'"'],'',$deliver_to[$i]);
             }
 
             $sql = 'SELECT item_id,item_code,item_desc,quantity,units,unit_price,discount,tax,total '.
@@ -411,40 +603,44 @@ class HelpersReport {
 
             if(INVOICE_SETUP['tax_inclusive']) $inclusive = 'Y'; else $inclusive = 'N';
 
+            //assuming Feb financial year end
+            $fin_period = $date['mon'] - 2;
+            if($fin_period < 1) $fin_period += 12;
+
             $line = [];
             $line[] = 'Header';
             $line[] = Csv::csvPrep($invoice['invoice_no'],['type'=>'STRING']);     //document number, Character, 8 characters maximum, ignored when importing
             $line[] = ' ';                                      //Deleted, Character, Y=Deleted, <space>=not deleted, ignored when importing
-            $line[] = 'Y';                                      //Print Status, Character, Y=Printed, <space>=not printed
+            $line[] = ' ';                                      //Print Status, Character, Y=Printed, <space>=not printed
             $line[] = Csv::csvPrep($invoice['account_code'],['type'=>'STRING']);   //Customer Code, Character, 6 characters maximum
-            $line[] = $date['mon'];                             //Period Number, Numeric, 1-13
+            $line[] = $fin_period;                             //Period Number, Numeric, 1-13
             $line[] = Date::formatDate($date,'ARRAY','DD-MM-YYYY',['separator'=>'/']); //Date, Character,DD/MM/YYYY
-            $line[] = $invoice['client_code']; //Order Number, Character, 25 characters maximum
+            $line[] = Csv::csvPrep($invoice['client_code']); //Order Number, Character, 25 characters maximum
             $line[] = $inclusive; //Inc/Exc, Character, Y=Inclusive, N=Exclusive 
             $line[] = Csv::csvPrep($invoice['discount']); //Discount, Numeric, nominal i assume
             //invoice message 1-3, 3 separate fields of 30 characters maximum each
             //$client_detail = $client['client']['company_title']."\n".$location['address'];
-            $line[] = $client['client']['company_title'];//$location[0];
-            $line[] = $location[0];
-            $line[] = $location[1];
+            $line[] = Csv::csvPrep($client['client']['company_title']);//$location[0];
+            $line[] = Csv::csvPrep($location[0]);
+            $line[] = Csv::csvPrep($location[1]);
             //Delivery Address 1-5, 5 separate fields of 30 characters maximum each
-            $line[] = $deliver_to[0];
-            $line[] = $deliver_to[1];
-            $line[] = $deliver_to[2];
-            $line[] = $deliver_to[3];
-            $line[] = $deliver_to[4];
+            $line[] = Csv::csvPrep($deliver_to[0]);
+            $line[] = Csv::csvPrep($deliver_to[1]);
+            $line[] = Csv::csvPrep($deliver_to[2]);
+            $line[] = Csv::csvPrep($deliver_to[3]);
+            $line[] = Csv::csvPrep($deliver_to[4]);
             
             $line[] = ''; //Sales Analysis Code, 5 characters maximum
             $line[] = '30'; //Settlement Terms, Numeric, 0-32 ??
             $line[] = Date::formatDate($date,'ARRAY','DD-MM-YYYY',['separator'=>'/']); //Document Date, Character,DD/MM/YYYY
-            $line[] = $client['contact']['INVOICE']['tel']; //Telephone, 16 characters maximum CLIENT contact???
+            $line[] = Csv::csvPrep($client['contact']['INVOICE']['tel']); //Telephone, 16 characters maximum CLIENT contact???
             $line[] = ''; //Fax number , 16 characters maximum
-            $line[] = $client['contact']['INVOICE']['name']; //contact person, 16 characters maximum
+            $line[] = Csv::csvPrep($client['contact']['INVOICE']['name']); //contact person, 16 characters maximum
             $line[] = '1'; //Exchange Rate, Numeric, 1 in foreign currency, 7.6 maximum 
             $line[] = ''; //Freight Method, 10 characters maximum
             $line[] = ''; //Ship/Deliver, 16 Characters maximum
             $line[] = 'N'; //Additional Costs, Y=Additional, N=Normal, supplier invoices only
-            $line[] = 'Y'; //Email Status, Y=Emailed, <space>=not emailed
+            $line[] = ' '; //Email Status, Y=Emailed, <space>=not emailed
 
             $csv_line = implode(',',$line);
             Csv::csvAddRow($csv_line,$csv_data);
@@ -456,13 +652,14 @@ class HelpersReport {
                 $line[] = '0'; //Cost Price, Numeric, When you import, you MUST set this field to zero.
                 $line[] = $item['quantity']; //Quantity, Numeric, 9.4 maximum
                 $line[] = $item['unit_price']; //Unit Selling Price, Numeric, 9.4 maximum
-                $line[] = $item['total']; //Inclusive Price, Numeric, 9.4 maximum
+                //NB: for some reason Pastel is happy with exclusive price total, maybe it just ignores this value and calculates itself
+                $line[] = round(($item['quantity'] * $item['unit_price']),2); //Inclusive Price, Numeric, 9.4 maximum
                 $line[] = Csv::csvPrep($item['units']); //Unit, Character, 4 maximum
-                $line[] = '01'; //Tax type, Character, 00-30 (00=no taxation 02=zero rated)
+                $line[] = $tax_type;//Tax type, Character, 00-30 (00=no taxation 1 = 14% 15 = 15% 02=zero rated, client dependant)
                 //NB: Invoice items never have a discount, but if introducted should be as a %percentage
                 if($item['discount'] != 0) {
                     $discount_type = '2';
-                    $discount_pct = round($item['discount']*100,0); //12.5% = 1250
+                    $discount_pct = round($item['discount']*100,0); //ie: 12.5% = 1250
                 } else {
                     $discount_type = '0';
                     $discount_pct = '0';
@@ -471,9 +668,9 @@ class HelpersReport {
                 $line[] = $discount_pct; //Discount Percentage, Character, Omit decimals, for example 12.5% = 1250
 
                 //Pastel doesd not recognise "/" code divider that itself exports!!
-                $item_code = str_replace('/','',$item['item_code']);
+                $item_code = Csv::csvPrep(str_replace('/','',$item['item_code']));
                 $line[] = Csv::csvPrep(substr($item_code,0,15)); //Code, Character, 15 maximum
-                $line[] = Csv::csvPrep(substr($item['item_desc'],0,40)); //Descriptiom, Character, 40 maximum
+                $line[] = Csv::csvPrep(substr($item['item_desc'],-40)); //Descriptiom, Character, 40 maximum, counting from right!
                 $line[] = '6'; //Line type, Character, 4=Inventory, 6=GL, 7=Remarks
                 $line[] = ''; //Projects code, Character, 5 maximum
                 $line[] = ''; //Store, Character, 3 maximum

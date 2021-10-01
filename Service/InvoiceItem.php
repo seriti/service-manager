@@ -16,6 +16,7 @@ class InvoiceItem extends Table
         $this->setupMaster(['table'=>TABLE_PREFIX.'contract_invoice','key'=>'invoice_id','child_col'=>'invoice_id',
                             'show_sql'=>'SELECT CONCAT("Invoice ID[",invoice_id,"] ",date) FROM '.TABLE_PREFIX.'contract_invoice WHERE invoice_id = "{KEY_VAL}" ']);
 
+        //$this->modifyAccess(['edit'=>true,'delete'=>false,'add'=>false]);
         $this->modifyAccess(['read_only'=>true]);
 
         $this->addTableCol(['id'=>'item_id','type'=>'INTEGER','title'=>'Item ID','key'=>true,'key_auto'=>true,'list'=>false]);
@@ -32,5 +33,7 @@ class InvoiceItem extends Table
         //$this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
 
         $this->addSearch(['item_code','item_desc'],['rows'=>1]);
+
+        //$this->addSelect('item_code','SELECT code, CONCAT(code,":",description) FROM '.TABLE_PREFIX.'account_code ORDER BY sort');
     }
 }

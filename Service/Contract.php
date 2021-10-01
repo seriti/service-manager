@@ -13,6 +13,8 @@ use App\Service\Helpers;
 
 class Contract extends Table
 {
+    protected $status = ['OK','NEW','HIDE'];
+    
     public function setup($param = []) 
     {
         if(!isset($param['type'])) $param['type'] = 'REPEAT';
@@ -135,9 +137,8 @@ class Contract extends Table
         $this->addSelect('user_id_sold',$sql);
         $this->addSelect('user_id_signed',$sql);
         $this->addSelect('user_id_checked',$sql);
-        
-        $status = ['OK','HIDE'];
-        $this->addSelect('status',['list'=>$status,'list_assoc'=>false]);
+                
+        $this->addSelect('status',['list'=>$this->status,'list_assoc'=>false]);
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'CON','max_no'=>100,
                            'icon'=>'<span class="glyphicon glyphicon-file" aria-hidden="true"></span>&nbsp;manage',

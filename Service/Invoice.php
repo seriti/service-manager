@@ -19,14 +19,16 @@ class Invoice extends Table
         $param = ['row_name'=>'Contract invoice','col_label'=>'contract_id'];
         parent::setup($param);
 
-        $this->modifyAccess(['add'=>false]);
+        $access = ['add'=>false,'delete'=>false];
+        if($this->user_access_level === 'GOD')  $access['delete'] = true;
+        $this->modifyAccess($access);
 
         $this->addTableCol(['id'=>'invoice_id','type'=>'INTEGER','title'=>'Invoice ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract','edit_title'=>'Contract ID']);
         $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no']);
         //$this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'name FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
         
-        $this->addTableCol(['id'=>'date','type'=>'DATETIME','title'=>'Date created','edit'=>false,]);
+        $this->addTableCol(['id'=>'date','type'=>'DATETIME','title'=>'Date on invoice','edit'=>false,]);
         $this->addTableCol(['id'=>'subtotal','type'=>'DECIMAL','title'=>'Subtotal']);
         $this->addTableCol(['id'=>'discount','type'=>'DECIMAL','title'=>'Discount']);
         $this->addTableCol(['id'=>'tax','type'=>'DECIMAL','title'=>'Tax']);
@@ -41,18 +43,23 @@ class Invoice extends Table
 
         $this->addAction(['type'=>'check_box','text'=>'']);
         //$this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
-        //$this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
-        
+
+        if($access['delete']) {
+            $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);  
+        }
+                
         $this->addAction(['type'=>'popup','text'=>'Invoice&nbsp;items','url'=>'invoice_item','mode'=>'view','width'=>600,'height'=>600]);
 
-        $this->addSearch(['invoice_id','contract_id','date','total','notes','status'],['rows'=>2]);
+        $this->addSearch(['invoice_id','contract_id','invoice_no','date','total','notes','status'],['rows'=>2]);
         $this->addSearchXtra('C.client_code','Contract code');
+        $this->addSearchXtra('C.division_id','Division');
 
         //$this->addSelect('contract_id','SELECT contract_id,client_code FROM '.TABLE_PREFIX.'contract ORDER BY client_code');
         //$this->addSelect('contact_id','SELECT contact_id, name FROM '.TABLE_PREFIX.'client_contact ORDER BY name');
               
         
         $this->addSelect('status',['list'=>$this->status,'list_assoc'=>true]);
+        $this->addSelect('C.division_id','SELECT division_id, name FROM '.TABLE_PREFIX.'division ORDER BY sort');
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'INV','max_no'=>100,
                            'icon'=>'<span class="glyphicon glyphicon-file" aria-hidden="true"></span>&nbsp;manage',
@@ -235,8 +242,33 @@ class Invoice extends Table
     }
     //protected function beforeUpdate($id,$context,&$data,&$error) {}
     //protected function afterUpdate($id,$context,$data) {}
-    //protected function beforeDelete($id,&$error) {}
-    //protected function afterDelete($id) {}
+    protected function beforeDelete($id,&$error) 
+    {
+        if($this->user_access_level !== 'GOD') {
+            $error .= 'You do not have sufficient access to delete '.$this->row_name; 
+        } else {
+            $error_tmp = '';
+            
+            //FUCKING IDIOT-> $sql = 'DELETE FROM '.TABLE_PREFIX.'invoice_item WHERE item_id = "'.$this->db->escapeSql($id).'" ';
+            $sql = 'DELETE FROM '.TABLE_PREFIX.'invoice_item WHERE invoice_id = "'.$this->db->escapeSql($id).'" ';
+            $this->db->executeSql($sql,$error_tmp);
+            if($error_tmp == '') {
+                $this->addMessage('Successfully deleted Invoice Items for '.$this->row_name.' ID['.$id.'] ');
+            } else {
+                $this->addError('Could not delete Invoice Items for '.$this->row_name.' ID['.$id.'] ');
+            }
+
+            $location_id = 'INV'.$id;
+            $sql = 'DELETE FROM '.TABLE_PREFIX.'file WHERE location_id = "'.$this->db->escapeSql($location_id).'" ';
+            $this->db->executeSql($sql,$error_tmp);
+            if($error_tmp == '') {
+                $this->addMessage('Successfully deleted Invoice PDF for '.$this->row_name.' ID['.$id.'] ');
+            } else {
+                $this->addError('Could not delete Invoice PDF for '.$this->row_name.' ID['.$id.'] ');
+            } 
+        }
+    }
+
     //protected function beforeValidate($col_id,&$value,&$error,$context) {}
    
 

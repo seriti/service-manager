@@ -153,7 +153,7 @@ class Client extends Table
         if($error_tmp == '') {
             $this->addMessage('Successfully deleted contacts for '.$this->row_name.' ID['.$id.'] ');
         } else {
-            $this->addError('Could not delete contacts for '.$this->row_name.' ID['.$key_id.'] ');
+            $this->addError('Could not delete contacts for '.$this->row_name.' ID['.$id.'] ');
         } 
 
         $sql = 'DELETE FROM '.TABLE_PREFIX.'client_location WHERE client_id = "'.$this->db->escapeSql($id).'" ';
@@ -161,7 +161,7 @@ class Client extends Table
         if($error_tmp == '') {
             $this->addMessage('Successfully deleted locations for '.$this->row_name.' ID['.$id.'] ');
         } else {
-            $this->addError('Could not delete locations for '.$this->row_name.' ID['.$key_id.'] ');
+            $this->addError('Could not delete locations for '.$this->row_name.' ID['.$id.'] ');
         } 
     }
     //protected function afterDelete($id) {}

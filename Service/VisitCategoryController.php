@@ -22,7 +22,7 @@ class VisitCategoryController
         $html = $table->processTable();
 
         $template['html'] = $html;
-        $template['title'] = MODULE_LOGO.'All Visit categorys';
+        $template['title'] = MODULE_LOGO.'All Visit categories';
         return $this->container->view->render($response,'admin.php',$template);
     }
 }

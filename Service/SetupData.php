@@ -96,6 +96,7 @@ class SetupData extends SetupModuledata
                               `invoice_address` TEXT NOT NULL,
                               `invoice_contact` TEXT NOT NULL,
                               `invoice_info` TEXT NOT NULL,
+                              `tax_free` tinyint(1) NOT NULL,
                               `sort` INT NOT NULL,
                               `status` VARCHAR(64) NOT NULL,
                               PRIMARY KEY (`division_id`)

@@ -28,6 +28,7 @@ class Division extends Table
         $this->addTableCol(['id'=>'contract_prefix','type'=>'STRING','title'=>'Contract prefix','hint'=>'Text to appear before Contract No.','required'=>false]);
         $this->addTableCol(['id'=>'contract_no','type'=>'INTEGER','title'=>'Contract no','hint'=>'Incremental contract number','edit'=>false]);
         
+        $this->addTableCol(['id'=>'tax_free','type'=>'BOOLEAN','title'=>'Tax free']);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
 

@@ -11,6 +11,9 @@ class Report extends ReportTool
 {
     protected $visit_status = ['ALL'=>'ALL entries','NEW'=>'Preliminary entries only','CONFIRMED'=>'Confirmed entries only','COMPLETED'=>'Completed visits only'];
 
+    protected $contract_status = ['ALL'=>'ALL contract statuses','NEW'=>'NEW contracts','OK'=>'OK contracts','HIDE'=>'Hidden contracts'];
+    protected $contract_type = ['ALL'=>'SINGLE Shot & REPEAT contracts','SINGLE'=>'SINGLE Shot contracts','REPEAT'=>'REPEAT contracts'];
+
     //configure
     public function setup() 
     {
@@ -29,12 +32,16 @@ class Report extends ReportTool
         $param = ['input'=>['select_division','select_date_period','select_format']];
         $this->addReport('INVOICE_SUMMARY','Division Invoices issued',$param); 
 
-        $param = ['input'=>['select_division','select_format']];
-        $this->addReport('CONTRACT_ORPHAN_INVOICE','Contracts without an invoice',$param);
-        $this->addReport('CONTRACT_ORPHAN_VISIT','Contracts without a planned or completed visit',$param); 
+        $param = ['input'=>['select_division','select_date_period','select_contract_status','select_contract_type','select_format']];
+        $this->addReport('CONTRACT_ORPHAN_INVOICE','Contracts without an invoice over period',$param);
+        $this->addReport('CONTRACT_ORPHAN_VISIT','Contracts without a planned or completed visit over period',$param); 
+        //$param = ['input'=>['select_division','select_format']];
+        $this->addReport('WORK_DUE','Contract Services & Invoices due',$param); 
         
         $this->addInput('select_division','');
-        //$this->addInput('select_contract_type','');
+        //$this->addInput('select_visit_status','');
+        $this->addInput('select_contract_type','');
+        $this->addInput('select_contract_status','');
         $this->addInput('select_round','');
         $this->addInput('select_date_period','');
         $this->addInput('select_date','');
@@ -49,21 +56,13 @@ class Report extends ReportTool
         
         if($id === 'select_division') {
             $param = [];
-            $param['class'] = 'form-control input-medium';
+            $param['class'] = 'form-control input-medium input-inline';
             $param['xtra'] = ['ALL'=>'All divisions'];
             $sql = 'SELECT division_id,name FROM '.TABLE_PREFIX.'division ORDER BY name'; 
             if(isset($form['division_id'])) $division_id = $form['division_id']; else $division_id = 'ALL';
-            $html .= Form::sqlList($sql,$this->db,'division_id',$division_id,$param);
+            $html .= 'Division:&nbsp;'.Form::sqlList($sql,$this->db,'division_id',$division_id,$param);
         }
-                
-        if($id === 'select_contract_type') {
-            $param = [];
-            $param['class'] = 'form-control input-medium';
-            if(isset($form['contract_type'])) $contract_type = $form['contract_type']; else $contract_type = 'REPEAT';
-            $type_arr = ['SINGLE'=>'Single shot contracts','REPEAT'=>'Repeat contracts'];
-            $html .= Form::arrayList($type_arr,'contract_type',$contract_type,true,$param); 
-        }
-
+        
         if($id === 'select_round') {
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
@@ -124,7 +123,23 @@ class Report extends ReportTool
             $param['class'] = 'form-control input-medium input-inline';
             if(isset($form['visit_status'])) $visit_status = $form['visit_status']; else $visit_status = 'ALL';
             $key_assoc = true;
-            $html .= 'Status: '.Form::arrayList($this->visit_status,'visit_status',$visit_status,$key_assoc,$param);
+            $html .= 'Visit Status:&nbsp;'.Form::arrayList($this->visit_status,'visit_status',$visit_status,$key_assoc,$param);
+        }  
+
+        if($id === 'select_contract_status') {
+            $param = [];
+            $param['class'] = 'form-control input-medium input-inline';
+            if(isset($form['contract_status'])) $contract_status = $form['contract_status']; else $contract_status = 'ALL';
+            $key_assoc = true;
+            $html .= 'Contract Status:&nbsp;'.Form::arrayList($this->contract_status,'contract_status',$contract_status,$key_assoc,$param);
+        } 
+
+        if($id === 'select_contract_type') {
+            $param = [];
+            $param['class'] = 'form-control input-medium input-inline';
+            if(isset($form['contract_type'])) $contract_type = $form['contract_type']; else $contract_type = 'REPEAT';
+            $key_assoc = true;
+            $html .= 'Contract type:&nbsp;'.Form::arrayList($this->contract_type,'contract_type',$contract_type,$key_assoc,$param);
         }   
         
         if($id === 'select_format') {
@@ -163,7 +178,18 @@ class Report extends ReportTool
         if($id === 'CONTRACT_ORPHAN_INVOICE' or $id === 'CONTRACT_ORPHAN_VISIT') {
             if($id === 'CONTRACT_ORPHAN_INVOICE') $type = 'INVOICE';
             if($id === 'CONTRACT_ORPHAN_VISIT') $type = 'VISIT';
+            $options['date_from'] = $form['date_from'];
+            $options['date_to'] = $form['date_to'];
+            $options['status'] = $form['contract_status'];
+            $options['type_id'] = $form['contract_type'];
             $html = HelpersReport::contractOrphan($this->db,$type,$form['division_id'],$options,$error);
+            if($error !== '') $this->addError($error);
+        }
+
+        if($id === 'WORK_DUE') {
+            $options['type_id'] = $form['contract_type'];
+            $options['status'] = $form['contract_status'];
+            $html = HelpersReport::workPlanning($this->db,'DUE',$form['division_id'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);
         }
         

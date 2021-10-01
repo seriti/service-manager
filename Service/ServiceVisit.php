@@ -48,12 +48,14 @@ class ServiceVisit extends Table
 
         $this->addSearch(['visit_id','status','contract_id','category_id','round_id','user_id_tech','no_assistants','date_visit','feedback_id','notes'],['rows'=>3]);
         $this->addSearchXtra('C.client_code','Contract code');
+        $this->addSearchXtra('C.division_id','Division');
         $this->addSearchXtra('CL.name','Client name');
 
         //$this->addSelect('contract_id','SELECT contract_id,client_code FROM '.TABLE_PREFIX.'contract ORDER BY client_code');
         $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort');
         $this->addSelect('round_id','SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort');
         $this->addSelect('feedback_id','SELECT feedback_id, name FROM '.TABLE_PREFIX.'service_feedback ORDER BY type_id, sort');
+        $this->addSelect('C.division_id','SELECT division_id, name FROM '.TABLE_PREFIX.'division ORDER BY sort');
         
         //$status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRM booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
         $status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRMED booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];

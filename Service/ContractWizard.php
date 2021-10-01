@@ -20,7 +20,7 @@ use Seriti\Tools\SITE_NAME;
 
 use App\Service\Helpers;
 
-
+//NB: not currently used, copy of another wizard, needs heartsurgery. Adding contracts Handled by standard "contract" class 
 class ContractWizard extends Wizard 
 {
     protected $user;

@@ -64,6 +64,30 @@ class Helpers {
         return $date;
     }
 
+    //NB: assumes discount on unit price, and tax_rate as a decimal
+    public static function calcTotals($quantity,$price,$discount,$tax_rate,$price_inclusive)
+    {
+        $total = [];
+
+        //convert from % to price units
+        if($discount > 0.00 and $discount < 1.00) $discount = round(($discount * $price),2);
+        
+        $total['price'] = round($quantity * $price,2);
+        $total['discount'] = round($quantity * $discount,2);
+
+        if($price_inclusive) {
+            $total['total'] = $total['price'] - $total['discount'];
+            $total['subtotal'] = round(($total['total'] / (1 + $tax_rate)),2);
+            $total['tax'] = $total['total'] - $total['subtotal'];
+        } else {
+            $total['subtotal'] = $total['price'] - $total['discount'];
+            $total['tax'] = round(($total['subtotal'] * $tax_rate),2);
+            $total['total'] = $total['subtotal'] + $total['tax'];
+        }
+
+        return $total;
+    }
+
     //get contract items & service visit items for invoice creation
     public static function getInvoiceItems($db,$table_prefix,$contract_id,$format = 'ARRAY',$invoice_type = 'STANDARD') 
     {
@@ -79,7 +103,12 @@ class Helpers {
         $totals = ['subtotal'=>0,'discount'=>0,'tax'=>0,'total'=>0];
 
         $contract = self::get($db,$table_prefix,'contract',$contract_id);
+        $division = self::get($db,$table_prefix,'division',$contract['division_id']);
 
+        $tax_rate = TAX_RATE;
+        if($division['tax_free']) $tax_rate = 0;
+
+        $price_inclusive = INVOICE_SETUP['tax_inclusive']; 
         
         //construct primary contract item description
         $contract_info = '';
@@ -119,11 +148,13 @@ class Helpers {
             $invoice_item['price'] = $contract['price'];
             $invoice_item['notes'] = $contract['notes_client'];
 
+            //assumes percentage and converst to price units
             if($contract['discount'] <= 50) {
-                $totals['discount'] = round(($contract['price'] * $contract['discount']/100),2);
+                $invoice_item['discount'] = round(($contract['price'] * $contract['discount']/100),2);
             } else {
-                $totals['discount'] = $contract['discount'];
-            }    
+                $invoice_item['discount'] = $contract['discount'];
+            } 
+            
             $invoice_items[] = $invoice_item;
         }
 
@@ -148,9 +179,7 @@ class Helpers {
                     //$visit_no = $contract['no_visits'] + 1;
                     $price = $contract['price_visit'];
                 }    
-
             }
-           
 
             $invoice_item = [];
             $invoice_item['code'] = $contract_item_code;
@@ -159,7 +188,8 @@ class Helpers {
             $invoice_item['units'] = '';
             $invoice_item['price'] = $price;
             $invoice_item['notes'] = $contract['notes_client'];
-
+            $invoice_item['discount'] = 0;
+            
             $invoice_items[] = $invoice_item;
         }
 
@@ -196,7 +226,8 @@ class Helpers {
                 $invoice_item['units'] = $item['units'];
                 $invoice_item['price'] = $item['price'];
                 $invoice_item['notes'] = 'Contract item';
-
+                $invoice_item['discount'] = 0;
+                
                 $invoice_items[] = $invoice_item;
             } 
         }
@@ -211,18 +242,45 @@ class Helpers {
                 $invoice_item['units'] = $item['units'];
                 $invoice_item['price'] = $item['price'];
                 $invoice_item['notes'] = 'Service slip:'.$item['service_no'];
+                $invoice_item['discount'] = 0;
 
                 $invoice_items[] = $invoice_item;
             } 
         }
 
-        foreach($invoice_items as $item) {
-            $item_price = $item['quantity'] * $item['price'];
-            $totals['subtotal'] += round($item_price,2);
+        //calculate totals and taxes
+        foreach($invoice_items as $i => $item) {
+            //$item_price = $item['quantity'] * $item['price'];
+            //$totals['subtotal'] += round($item_price,2);
+
+
+            $item_totals = self::calcTotals($item['quantity'],$item['price'],$item['discount'],$tax_rate,$price_inclusive);
+            $item['total_price'] = $item_totals['price']; 
+            $item['total_discount'] = $item_totals['discount']; 
+            $item['subtotal'] = $item_totals['subtotal']; 
+            $item['tax'] = $item_totals['tax'];           
+            $item['total'] = $item_totals['total']; 
+
+            $invoice_items[$i] = $item;
+
+            $totals['subtotal'] += $item_totals['subtotal'];
+            $totals['tax'] += $item_totals['tax'];
+            $totals['total'] += $item_totals['total'];
+            $totals['discount'] += $item_totals['discount'];
+
         }
 
-        $totals['tax'] = round((($totals['subtotal'] - $totals['discount']) * TAX_RATE),2);
-        $totals['total'] = $totals['subtotal'] - $totals['discount'] + $totals['tax'];
+        /*
+        if($price_inclusive) {
+            $totals['total'] = $totals['subtotal'] - $totals['discount'];
+            $totals['subtotal'] = round(($totals['total'] / (1 + $tax_rate)),2);
+            $totals['tax'] = $totals['total'] - $totals['subtotal'];
+        } else {
+            $totals['tax'] = round((($totals['subtotal'] - $totals['discount']) * $tax_rate),2);
+            $totals['total'] = $totals['subtotal'] - $totals['discount'] + $totals['tax'];
+        }
+        */
+      
         
         if($format === 'ARRAY') {
             $output['items'] = $invoice_items;
@@ -248,6 +306,9 @@ class Helpers {
 
         $contract = self::get($db,$table_prefix,'contract',$contract_id);
         $division = self::get($db,$table_prefix,'division',$contract['division_id']);
+
+        //$tax_rate = TAX_RATE;
+        //if($division['tax_free']) $tax_rate = 0;
        
         $invoice_no = $division['invoice_prefix'].($division['invoice_no']+1);
 
@@ -282,11 +343,9 @@ class Helpers {
             $data['quantity'] = $item['quantity'];
             $data['units'] = $item['units'];
             $data['unit_price'] = $item['price'];
-            $data['discount'] = 0;
-            $total = $item['quantity'] * $item['price'];
-            $tax = $total * TAX_RATE;
-            $data['tax'] = round($tax,2);
-            $data['total'] = round($total,2);
+            $data['discount'] = $item['discount'];
+            $data['tax'] = $item['tax'];
+            $data['total'] = $item['total'];
 
             $db->insertRecord($table_item,$data,$error_tmp);
             if($error_tmp !== '') throw new Exception('SERVICE_INVOICE_CREATE: Could not create contract invoice item');
@@ -360,7 +419,6 @@ class Helpers {
         $pdf->Ln($row_h);
         
         if(count($items) != 0) {
-            
             $arr = [];
             $r = 0;
             $arr[0][$r] = 'Code';
@@ -519,6 +577,7 @@ class Helpers {
         //$pdf->Ln($row_h);
         $frame_y = $pdf->getY();
         
+        //NB: display of item totals seems to be quite arbitrary, ie not necessarily inclusive total
         if(count($items) != 0) {
             
             $arr = [];
@@ -529,7 +588,8 @@ class Helpers {
             $arr[3][$r] = 'Price';
             $arr[4][$r] = 'Discount';
             $arr[5][$r] = 'Tax';
-            $arr[6][$r] = 'Total';
+            $arr[6][$r] = 'Nett Price';
+            //$arr[6][$r] = 'Total';
             
             foreach($items as $item) {
                 $r++;
@@ -539,7 +599,10 @@ class Helpers {
                 $arr[3][$r] = $item['unit_price'];
                 $arr[4][$r] = $item['discount'];
                 $arr[5][$r] = $item['tax'];
-                $arr[6][$r] = $item['total'];
+
+                $nett_price = round(($item['quantity'] * $item['unit_price']),2);
+                $arr[6][$r] = $nett_price;
+                //$arr[6][$r] = $item['total'];
             }
                          
             $pdf->changeFont('TEXT');
