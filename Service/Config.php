@@ -39,7 +39,8 @@ class Config
 
         define('TAX_RATE',0.15);
         //'Primary invoice item for contract can be  contract 'client_code' or 'account_code'. 
-        define('INVOICE_SETUP',['contract_item'=>'account_code','account_info'=>true,'last_visit_info'=>true,'tax_inclusive'=>false]);
+        define('INVOICE_SETUP',['contract_item'=>'account_code','account_info'=>true,'allow_delete'=>false,'allow_edit'=>true,
+                                'last_visit_info'=>true,'last_visit_notes'=>false,'tax_inclusive'=>false]);
         //interval defined in minutes
         define('DIARY_SETUP',['from_time'=>'06:00','to_time'=>'20:00','interval'=>15,'days'=>7]);
                 

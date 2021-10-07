@@ -32,11 +32,17 @@ class Report extends ReportTool
         $param = ['input'=>['select_division','select_date_period','select_format']];
         $this->addReport('INVOICE_SUMMARY','Division Invoices issued',$param); 
 
+        $param = ['input'=>['select_division','select_user','select_date_period','select_format']];
+        $this->addReport('CONTRACT_VALUE','Division contract value by user and date signed',$param); 
+
+
         $param = ['input'=>['select_division','select_date_period','select_contract_status','select_contract_type','select_format']];
         $this->addReport('CONTRACT_ORPHAN_INVOICE','Contracts without an invoice over period',$param);
         $this->addReport('CONTRACT_ORPHAN_VISIT','Contracts without a planned or completed visit over period',$param); 
         //$param = ['input'=>['select_division','select_format']];
         $this->addReport('WORK_DUE','Contract Services & Invoices due',$param); 
+
+        
         
         $this->addInput('select_division','');
         //$this->addInput('select_visit_status','');
@@ -46,6 +52,7 @@ class Report extends ReportTool
         $this->addInput('select_date_period','');
         $this->addInput('select_date','');
         $this->addInput('select_technician','');
+        $this->addInput('select_user','');
         $this->addInput('select_format',''); 
     }
 
@@ -72,7 +79,7 @@ class Report extends ReportTool
             $html .= 'Round:&nbsp;'.Form::sqlList($sql,$this->db,'round_id',$round_id,$param);
         }
 
-         if($id === 'select_technician') {
+        if($id === 'select_technician') {
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
             $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE status <> "HIDE" ORDER BY name'; 
@@ -80,6 +87,15 @@ class Report extends ReportTool
             $html .= 'Technician:&nbsp;'.Form::sqlList($sql,$this->db,'user_id_tech',$user_id_tech,$param);
         }
         
+        if($id === 'select_user') {
+            $param = [];
+            $param['class'] = 'form-control input-medium input-inline';
+            $param['xtra'] = ['ALL'=>'All Users'];
+            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE status <> "HIDE" ORDER BY name'; 
+            if(isset($form['user_id'])) $user_id = $form['user_id']; else $user_id = '';
+            $html .= 'User:&nbsp;'.Form::sqlList($sql,$this->db,'user_id',$user_id,$param);
+        }
+
         if($id === 'select_month_period') {
             $past_years = 10;
             $future_years = 0;
@@ -183,6 +199,12 @@ class Report extends ReportTool
             $options['status'] = $form['contract_status'];
             $options['type_id'] = $form['contract_type'];
             $html = HelpersReport::contractOrphan($this->db,$type,$form['division_id'],$options,$error);
+            if($error !== '') $this->addError($error);
+        }
+
+        if($id === 'CONTRACT_VALUE') {
+            $options['user_id'] = $form['user_id'];
+            $html = HelpersReport::contractValue($this->db,$form['division_id'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);
         }
 

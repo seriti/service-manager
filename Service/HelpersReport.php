@@ -797,4 +797,173 @@ class HelpersReport {
         return $html;
     }
 
+    public static function contractValue($db,$division_id,$date_from,$date_to,$options = [],&$error)
+    {
+        $error = '';
+
+
+        //if(!isset($options['output'])) $options['output'] = 'BROWSER';
+        if(!isset($options['format'])) $options['format'] = 'HTML';
+        $options['format'] = strtoupper($options['format']);
+
+        if(!isset($options['user_id'])) $options['user_id'] = 'ALL';
+        
+        if($division_id === 'ALL') {
+            $division_name = 'All divisions';
+        } else {
+            $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
+            if($division == 0) {
+                $error .= 'Invalid Division['.$division_id.'] selected.';
+            } else {
+                $division_name = $division['name'];
+            }    
+        }
+
+        if($options['user_id'] === 'ALL') {
+            $user_name = 'all users';
+        } else {
+            $user = helpers::get($db,'',TABLE_USER,$options['user_id'],'user_id');
+            if($user == 0) {
+                $error .= 'Invalid User['.$options['user_id'].'] selected.';
+            } else {
+                $user_name = $user['name'];
+            }    
+        }     
+        
+        if($error !== '') return false;
+
+        $doc_name_base = str_replace(' ','_',$division_name).'_contract_value_from_'.
+                         Date::formatDate($date_from).'_to_'.Date::formatDate($date_to).'_on_'.date('Y-m-d');
+
+        $page_title = $division_name.' contract value from '.Date::formatDate($date_from).' to '.Date::formatDate($date_to);
+
+        $table_contract = TABLE_PREFIX.'contract';
+        $table_division = TABLE_PREFIX.'division';
+        $table_user = TABLE_USER;
+        
+        $sql_base = 'SELECT D.division_id,D.name AS division,U.name AS user, SUM(C.price) AS total_price, SUM(C.price_visit) AS total_visit, SUM(C.price_audit) AS total_audit '.
+                    'FROM '.$table_contract.' AS C '.
+                    'JOIN '.$table_division.' AS D ON(C.division_id = D.division_id) ';
+
+
+        $sql_where = 'WHERE C.date_signed >= "'.$db->escapeSql($date_from).'" AND C.date_signed <= "'.$db->escapeSql($date_to).'" ';
+        if($division_id !== 'ALL') $sql_where .= 'AND C.division_id = "'.$db->escapeSql($division_id).'" ';
+
+        $sql_user = ['responsible'=>'','sold'=>'','signed'=>'','checked'=>''];
+        foreach($sql_user as $key=>$sql) {
+            $sql = $sql_base.' JOIN '.$table_user.' AS U ON(C.user_id_'.$key.' = U.user_id) '.$sql_where;
+            if($options['user_id'] !== 'ALL') $sql .= 'AND C.user_id_'.$key.' = "'.$db->escapeSql($options['user_id']).'" ';
+            $sql .= 'GROUP BY D.division_id,C.user_id_'.$key;
+            $sql_user[$key] = $sql;
+        }
+        
+
+        $data_initial = [];
+        $r = 0;
+        $data_initial[0][$r] = 'Division';
+        $data_initial[1][$r] = 'User';
+        $data_initial[2][$r] = 'Total intitial VALUE';
+        $data_initial[3][$r] = 'Total visit VALUE';
+        $data_initial[4][$r] = 'Total audit VALUE';
+                
+        foreach($sql_user as $key=>$sql) {
+            $r = 0;
+            $data = $data_initial;
+            $total = ['price'=>0,'visit'=>0,'audit'=>0];
+            
+            $arr = $db->readSqlArray($sql);
+            if($arr != 0) {
+                foreach($arr as $values) {
+                    $r++;
+                    $data[0][$r] = $values['division'];
+                    $data[1][$r] = $values['user'];
+                    $data[2][$r] = $values['total_price'];
+                    $data[3][$r] = $values['total_visit'];
+                    $data[4][$r] = $values['total_audit'];
+
+                    $total['price'] .= $values['total_price']; 
+                    $total['visit'] .= $values['total_visit'];
+                    $total['audit'] .= $values['total_audit'];
+                }
+            }
+
+            $r++;
+            $data[0][$r] = 'Totals';
+            $data[1][$r] = 'All users';
+            $data[2][$r] = $total['price'];
+            $data[3][$r] = $total['visit'];
+            $data[4][$r] = $total['audit'];
+
+            $data_user[$key] = $data;
+        } 
+            
+
+        $col_width = array(30,30,20,20,20);
+        $col_type = array('','','DBL2','DBL2','DBL2');
+
+        if($options['format'] === 'PDF') {
+            $doc_name = $doc_name_base.'_'.date('Y-m-d').'.pdf';
+            
+            $pdf = new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            
+            $pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options = [];
+            $pdf_options['font_size'] = 8;
+            $row_h = 6;
+            
+            foreach($data_user as $key => $data) {
+                $pdf->arrayDrawTable($data,$row_h,$col_width,$col_type,'L',$pdf_options); 
+                $pdf->Ln($row_h*2);   
+            }
+            
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($doc_name,'D');    
+            exit;
+        }
+
+
+        if($options['format'] === 'HTML') {
+            $html = '<h1>'.$page_title.'</h1>';
+            $html_options = [];
+            $html_options['col_type'] = $col_type;
+            
+            foreach($data_user as $key => $data) {
+                $html .= '<h2>'.strtoupper($key).' user</h2>';
+                $html .= Html::arrayDumpHtml2($data,$html_options);
+                $html .= '<br/>';
+             }
+            
+        }
+
+        if($options['format'] === 'CSV') {
+            $csv_data = '';
+            $doc_name = $doc_name_base.'_'.date('Y-m-d').'.csv';
+            
+            foreach($data_user as $key => $data) {
+                $csv_data .= strtoupper($key).' user'."\r\n";
+                $csv_data .= Csv::arrayDumpCsv($data);
+                $csv_data .= "\r\n";
+            }
+            
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD','csv');
+            exit;
+        }               
+
+        return $html;
+    }
+
 }

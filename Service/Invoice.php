@@ -19,30 +19,34 @@ class Invoice extends Table
         $param = ['row_name'=>'Contract invoice','col_label'=>'contract_id'];
         parent::setup($param);
 
-        $access = ['add'=>false,'delete'=>false];
+        $access = ['add'=>false,'delete'=>false,'edit'=>false];
+        if(INVOICE_SETUP['allow_edit']) $access['edit'] = true;
         if($this->user_access_level === 'GOD')  $access['delete'] = true;
         $this->modifyAccess($access);
 
         $this->addTableCol(['id'=>'invoice_id','type'=>'INTEGER','title'=>'Invoice ID','key'=>true,'key_auto'=>true]);
-        $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract','edit_title'=>'Contract ID']);
-        $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no']);
+        $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract','edit_title'=>'Contract ID','edit'=>false]);
+        $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no','edit'=>false]);
         //$this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'name FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
         
-        $this->addTableCol(['id'=>'date','type'=>'DATETIME','title'=>'Date on invoice','edit'=>false,]);
-        $this->addTableCol(['id'=>'subtotal','type'=>'DECIMAL','title'=>'Subtotal']);
-        $this->addTableCol(['id'=>'discount','type'=>'DECIMAL','title'=>'Discount']);
-        $this->addTableCol(['id'=>'tax','type'=>'DECIMAL','title'=>'Tax']);
-        $this->addTableCol(['id'=>'total','type'=>'DECIMAL','title'=>'Total']);
+        $this->addTableCol(['id'=>'date','type'=>'DATETIME','title'=>'Date on invoice','edit'=>true,]);
+        $this->addTableCol(['id'=>'subtotal','type'=>'DECIMAL','title'=>'Subtotal','edit'=>false]);
+        $this->addTableCol(['id'=>'discount','type'=>'DECIMAL','title'=>'Discount','edit'=>false]);
+        $this->addTableCol(['id'=>'tax','type'=>'DECIMAL','title'=>'Tax','edit'=>false]);
+        $this->addTableCol(['id'=>'total','type'=>'DECIMAL','title'=>'Total','edit'=>false]);
        
-        $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false,'list'=>true]);
+        $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Invoice Notes','hint'=>'These will be added below last invoice item','required'=>false,'list'=>true]);
+        $this->addTableCol(['id'=>'notes_admin','type'=>'TEXT','title'=>'Admin Notes','hint'=>'These will NOT appear on invoice.','required'=>false,'list'=>true]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
         $this->addSql('JOIN','LEFT JOIN '.TABLE_PREFIX.'contract AS C ON(T.contract_id = C.contract_id)');
                
         $this->addSortOrder('T.invoice_id DESC','Most recent first','DEFAULT');
 
-        $this->addAction(['type'=>'check_box','text'=>'']);
-        //$this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
+        if($access['edit']) {
+            $this->addAction(['type'=>'check_box','text'=>'']);
+            $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
+        }    
 
         if($access['delete']) {
             $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);  
@@ -103,8 +107,8 @@ class Invoice extends Table
             $list['SELECT'] = 'Action for selected '.$this->row_name_plural;
             $list['STATUS_CHANGE'] = 'Change invoice Status.';
             $list['CREATE_PDF'] = 'Create invoice PDF';
-            $list['EMAIL_CLIENT'] = 'Email invoice PDF to Client';
-            $list['EMAIL_INVOICE'] = 'Email invoice PDF to any address';
+            $list['EMAIL_CLIENT'] = 'Email latest invoice PDF to Client';
+            $list['EMAIL_INVOICE'] = 'Email latest invoice PDF to any address';
 
         }  
         

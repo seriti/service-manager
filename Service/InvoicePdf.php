@@ -12,7 +12,7 @@ class InvoicePdf extends Pdf
     //all margins within page borders
     protected $invoice_margin = 10;
     //all margins within block borders 
-    protected $block_margin = 4;
+    protected $block_margin = 2; //4
     //space between blocks
     protected $block_padding = 4;
     
@@ -35,8 +35,7 @@ class InvoicePdf extends Pdf
     public function header() 
     {
         $this->SetFont($this->font_face);
-        $row_h = 10;
-
+        
         //draw all borders first
         $this->changeFont('H2');
         $this->SetLineWidth(.1);
@@ -44,9 +43,9 @@ class InvoicePdf extends Pdf
 
         $block_w = ($this->w - ($this->invoice_margin * 2) - $this->block_padding) / 2 ;
         $block_h = 40;
-        $title_h = 10;
+        $title_h = 8; //10
         $row_h = 6;
-        $info_h = 6;
+        $info_h = 5; //6
 
         //top left, business details
         $pos_x = $this->invoice_margin;

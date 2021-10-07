@@ -122,11 +122,11 @@ class Helpers {
                 if($str === '') $str = 'Account code description NA';
                 $contract_info .= $str;
             } else {
-                $contract_info .= $contract['type_id'].' contract ';
+                $contract_info .= $contract['type_id'].' contract.';
             }
         } else {
             $contract_item_code = $contract['client_code'];
-            $contract_info .= $contract['type_id'].' contract '.$contract['client_code'];
+            $contract_info .= $contract['type_id'].' contract '.$contract['client_code'].'.';
         }       
         
         if(INVOICE_SETUP['last_visit_info']) {
@@ -136,7 +136,10 @@ class Helpers {
                    'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
                    'ORDER BY V.date_visit DESC LIMIT 1';
             $last_visit = $db->readSqlRecord($sql);
-            if($last_visit != 0) $contract_info .= 'Service Slip No: '.$last_visit['service_no'].'. '.$last_visit['notes'];
+            if($last_visit != 0) {
+                if($last_visit['service_no'] != '') $contract_info .= ' Service Slip No: '.$last_visit['service_no'].'. ';
+                if(INVOICE_SETUP['last_visit_notes']) $contract_info .= $last_visit['notes'];
+            }    
         }
         
         if($contract['type_id'] === 'SINGLE') {
@@ -523,7 +526,7 @@ class Helpers {
         $items = $db->readSqlArray($sql); 
 
      
-        //invoice_no must be unique
+        //NB: Invoice_no must be unique & prefix INV used in saveInvoicePdf() to get version
         $pdf_name = 'INV-'.$invoice['invoice_no'].'.pdf';
         $doc_name = $pdf_name;
                 
@@ -647,7 +650,9 @@ class Helpers {
         $error = '';
      
         $pdf_dir = BASE_UPLOAD.UPLOAD_DOCS; 
-        
+
+        $table_file = TABLE_PREFIX.'file';
+
         $location_id = 'INV'.$invoice_id;
         $file_id = Calc::getFileId($db);
         $file_name = $file_id.'.pdf';
@@ -656,7 +661,18 @@ class Helpers {
         //rename doc to new guaranteed non-clashing name
         if(!rename($pdf_path_old,$pdf_path_new)) {
             $error .= 'Could not rename invoice pdf!<br/>'; 
-        } 
+        }
+
+        //check if invoice generated before and add version suffix to name if true
+        $sql = 'SELECT COUNT(*) FROM '.$table_file.' '.
+               'WHERE location_id = "'.$location_id.'" AND file_name_orig LIKE "INV%" ';
+        $count = $db->readSqlValue($sql);
+        if($count != 0) {
+            $count = $count + 1;
+            $doc_name_base = str_replace('.pdf','',$doc_name);
+            $doc_name = $doc_name_base.'-v'.$count.'.pdf';
+        }       
+         
                 
         //create file records and upload to amazon if required
         if($error == '') {    
@@ -676,7 +692,7 @@ class Helpers {
             } 
             
             if($error == '') {
-                $db->insertRecord(TABLE_PREFIX.'file',$file,$error_tmp);
+                $db->insertRecord($table_file,$file,$error_tmp);
                 if($error_tmp != '') $error .= 'ERROR creating invoice file record: '.$error_tmp.'<br/>';
             }   
         }   
@@ -694,6 +710,8 @@ class Helpers {
                 
         $system = $container['system'];
         $mail = $container['mail'];
+        //Can be multiple versions of invoice pdf
+        $latest_invoice_pdf_only = true;
 
         $invoice = self::get($db,TABLE_PREFIX,'contract_invoice',$invoice_id,'invoice_id');
         $contract = self::get($db,TABLE_PREFIX,'contract',$invoice['contract_id']);
@@ -720,19 +738,32 @@ class Helpers {
         $docs = new Upload($db,$container,TABLE_PREFIX.'file');
         $docs->setup(['location'=>'INV','interface'=>'download']);
 
+        //use to identify latest invoice pdf, ORDER BY file_id DESC 
+        $invoice_pdf_base = 'INV-'.$invoice['invoice_no'];
+        $invoice_pdf_count = 0;
+
         $sql = 'SELECT file_id,file_name_orig FROM '.TABLE_PREFIX.'file '.
-               'WHERE location_id ="INV'.$invoice_id.'" ORDER BY file_id ';
+               'WHERE location_id ="INV'.$invoice_id.'" ORDER BY file_id DESC ';
         $invoice_files = $db->readSqlList($sql);
         if($invoice_files != 0) {
             foreach($invoice_files as $file_id => $file_name) {
-                $attach_file['name'] = $file_name;
-                $attach_file['path'] = $docs->fileDownload($file_id,'FILE'); 
-                if(substr($attach_file['path'],0,5) !== 'Error' and file_exists($attach_file['path'])) {
-                    $attach[] = $attach_file;
-                    $attach_msg .= $file_name."\r\n";
-                } else {
-                    $error_str .= 'Error fetching files for attachment to email!'; 
-                }   
+                $valid = true;
+                if($latest_invoice_pdf_only and stripos($file_name,$invoice_pdf_base) !== false) {
+                   $invoice_pdf_count++;
+                   if($invoice_pdf_count > 1) $valid = false;
+                }
+
+                if($valid) {
+                    $attach_file['name'] = $file_name;
+                    $attach_file['path'] = $docs->fileDownload($file_id,'FILE'); 
+                    if(substr($attach_file['path'],0,5) !== 'Error' and file_exists($attach_file['path'])) {
+                        $attach[] = $attach_file;
+                        $attach_msg .= $file_name."\r\n";
+                    } else {
+                        $error_str .= 'Error fetching files for attachment to email!'; 
+                    }    
+                }
+                   
             }   
         }
             
@@ -925,7 +956,7 @@ class Helpers {
             if(!isset($client['location']['INVOICE'])) {
                 $client['location']['INVOICE'] = $client['location']['PHYSICAL'];
             }
-            if(!isset($client['location'][''])) {
+            if(!isset($client['location']['POSTAL'])) {
                 $client['location']['POSTAL'] = $client['location']['PHYSICAL'];
             }
         }

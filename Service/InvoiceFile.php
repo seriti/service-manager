@@ -26,10 +26,16 @@ class InvoiceFile extends Upload
         $param['show_sql'] = 'SELECT CONCAT("Invoice ID[",invoice_id,"] ",date) FROM '.TABLE_PREFIX.'contract_invoice WHERE invoice_id = "{KEY_VAL}" ';
         $this->setupMaster($param);
 
-        //$this->addAction('delete');
-
         //$access['read_only'] = true;
-        //$this->modifyAccess($access);
+        $access['email'] = true;
+        $access['delete'] = false;
+        $access['move'] = false;
+        $this->modifyAccess($access);
+               
+        
+        $this->addAction('check_box');
+        //$this->addAction('edit');
+        //$this->addAction(['type'=>'delete','text'=>'delete','pos'=>'R']);
     }
 }
 ?>
