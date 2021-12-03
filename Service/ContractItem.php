@@ -15,10 +15,10 @@ class ContractItem extends Table
         parent::setup($param);
 
         $this->setupMaster(['table'=>TABLE_PREFIX.'contract','key'=>'contract_id','child_col'=>'contract_id',
-                            'show_sql'=>'SELECT CONCAT("Contract: ",client_code) FROM '.TABLE_PREFIX.'contract WHERE contract_id = "{KEY_VAL}" ']);
+                            'show_sql'=>'SELECT CONCAT("Contract: ",`client_code`) FROM `'.TABLE_PREFIX.'contract` WHERE `contract_id` = "{KEY_VAL}" ']);
 
         $this->addTableCol(['id'=>'data_id','type'=>'INTEGER','title'=>'data ID','key'=>true,'key_auto'=>true,'list'=>false]);
-        $this->addTableCol(['id'=>'item_id','type'=>'INTEGER','title'=>'Item','join'=>'name FROM '.TABLE_PREFIX.'service_item WHERE item_id']);
+        $this->addTableCol(['id'=>'item_id','type'=>'INTEGER','title'=>'Item','join'=>'`name` FROM `'.TABLE_PREFIX.'service_item` WHERE `item_id`']);
         $this->addTableCol(['id'=>'price','type'=>'DECIMAL','title'=>'Price','new'=>0,'required'=>false]);
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
@@ -41,7 +41,7 @@ class ContractItem extends Table
     protected function beforeProcess($id) 
     {
         $contract = Helpers::get($this->db,TABLE_PREFIX,'contract',$this->master['key_val']);
-        $this->addSelect('item_id','SELECT item_id, name FROM '.TABLE_PREFIX.'service_item WHERE division_id = "'.$contract['division_id'].'" ORDER BY sort');    
+        $this->addSelect('item_id','SELECT `item_id`, `name` FROM `'.TABLE_PREFIX.'service_item` WHERE `division_id` = "'.$contract['division_id'].'" ORDER BY `sort`');    
     }
 
     /*** EVENT PLACEHOLDER FUNCTIONS ***/

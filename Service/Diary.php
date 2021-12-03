@@ -45,7 +45,7 @@ class Diary extends ReportTool
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
             $param['xtra'] = ['ALL'=>'All Rounds'];
-            $sql = 'SELECT round_id,name FROM '.TABLE_PREFIX.'service_round WHERE status <> "HIDE" ORDER BY sort'; 
+            $sql = 'SELECT `round_id`,`name` FROM `'.TABLE_PREFIX.'service_round` WHERE `status` <> "HIDE" ORDER BY `sort`'; 
             if(isset($form['round_id'])) $round_id = $form['round_id']; else $round_id = '';
             $html .= 'Round:&nbsp;'.Form::sqlList($sql,$this->db,'round_id',$round_id,$param);
         }
@@ -54,7 +54,7 @@ class Diary extends ReportTool
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
             $param['xtra'] = ['ALL'=>'All technicians'];
-            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY name'; 
+            $sql = 'SELECT `user_id`,`name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`'; 
             if(isset($form['user_id_tech'])) $user_id_tech = $form['user_id_tech']; else $user_id_tech = 'ALL';
             $html .= 'Technician:&nbsp;'.Form::sqlList($sql,$this->db,'user_id_tech',$user_id_tech,$param);
         }

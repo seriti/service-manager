@@ -39,7 +39,7 @@ class Helpers {
 
         if($key === '') $key = $table.'_id';    
         
-        $sql = 'SELECT * FROM '.$table_name.' WHERE '.$key.' = "'.$db->escapeSql($id).'" ';
+        $sql = 'SELECT * FROM `'.$table_name.'` WHERE `'.$key.'` = "'.$db->escapeSql($id).'" ';
         
         $record = $db->readSqlRecord($sql);
                         
@@ -52,12 +52,12 @@ class Helpers {
         $date = date('Y-m-d');
         $table_visit = $table_prefix.'contract_visit';
 
-        $sql = 'SELECT V.date_visit '.
-               'FROM '.$table_visit.' AS V '.
-               'WHERE V.contract_id = "'.$contract['contract_id'].'" AND '.
-                     'V.status = "COMPLETED" AND '.
-                     'V.date_visit < CURDATE() '.
-               'ORDER BY V.date_visit DESC LIMIT 1';
+        $sql = 'SELECT V.`date_visit` '.
+               'FROM `'.$table_visit.'` AS V '.
+               'WHERE V.`contract_id` = "'.$contract['contract_id'].'" AND '.
+                     'V.`status` = "COMPLETED" AND '.
+                     'V.`date_visit` < CURDATE() '.
+               'ORDER BY V.`date_visit` DESC LIMIT 1';
         $last_visit_date = $db->readSqlValue($sql,'');
         if($last_visit_date !== '') $date = $last_visit_date;
 
@@ -117,7 +117,7 @@ class Helpers {
             $contract_item_code = $contract['account_code'];
 
             if(INVOICE_SETUP['account_info']) {
-                $sql = 'SELECT description FROM '.$table_account_code.' WHERE code = "'.$contract['account_code'].'" ';
+                $sql = 'SELECT `description` FROM `'.$table_account_code.'` WHERE `code` = "'.$contract['account_code'].'" ';
                 $str = $db->readSqlValue($sql,'');
                 if($str === '') $str = 'Account code description NA';
                 $contract_info .= $str;
@@ -131,10 +131,10 @@ class Helpers {
         
         if(INVOICE_SETUP['last_visit_info']) {
             //get most recent completed(ie NOT invoiced) visit
-            $sql = 'SELECT V.visit_id,V.date_visit,V.service_no,V.notes '.
-                   'FROM '.$table_visit.' AS V '.
-                   'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
-                   'ORDER BY V.date_visit DESC LIMIT 1';
+            $sql = 'SELECT V.`visit_id`,V.`date_visit`,V.`service_no`,V.`notes` '.
+                   'FROM `'.$table_visit.'` AS V '.
+                   'WHERE V.`contract_id` = "'.$contract['contract_id'].'" AND V.`status` = "COMPLETED" AND V.`service_no` <> "" '.
+                   'ORDER BY V.`date_visit` DESC LIMIT 1';
             $last_visit = $db->readSqlRecord($sql);
             if($last_visit != 0) {
                 if($last_visit['service_no'] != '') $contract_info .= ' Service Slip No: '.$last_visit['service_no'].'. ';
@@ -168,8 +168,8 @@ class Helpers {
                 $contract_info = 'Audit Fee';
             } else {
                 /*
-                $sql = 'SELECT COUNT(*) FROM '.$table_visit.' '.
-                       'WHERE contract_id = "'.$contract['contract_id'].'" AND (status = "COMPLETED" OR status = "INVOICED")';
+                $sql = 'SELECT COUNT(*) FROM `'.$table_visit.'` '.
+                       'WHERE `contract_id` = "'.$contract['contract_id'].'" AND (`status` = "COMPLETED" OR `status` = "INVOICED")';
                 $count = $db->readSqlValue($sql,0);
                 */
                 //NB: no_visits must be updated by invoice creation
@@ -201,22 +201,22 @@ class Helpers {
         if($invoice_type === 'AUDIT') {
             $contract_items = 0;
         } else {
-            $sql = 'SELECT C.item_id,I.name,I.code,C.price,U.name AS units,C.notes '.
-                   'FROM '.$table_contract_item.' AS C LEFT JOIN '.$table_item.' AS I ON(C.item_id = I.item_id) '.
-                         'LEFT JOIN '.$table_units.' AS U ON(I.units_id = U.units_id) '.
-                   'WHERE C.contract_id = "'.$contract['contract_id'].'" AND C.price > 0 ';
+            $sql = 'SELECT C.`item_id`,I.`name`,I.`code`,C.`price`,U.`name` AS `units`,C.`notes` '.
+                   'FROM `'.$table_contract_item.'` AS C LEFT JOIN `'.$table_item.'` AS I ON(C.`item_id` = I.`item_id`) '.
+                         'LEFT JOIN `'.$table_units.'` AS U ON(I.`units_id` = U.`units_id`) '.
+                   'WHERE C.`contract_id` = "'.$contract['contract_id'].'" AND C.`price` > 0 ';
             $contract_items = $db->readSqlArray($sql);
         }
 
         
         //NB: this assumes that contract visit record status is updated after invoicing, and also that a service slip no has been captured
         //NB2: status should be set to INVOICED after invoices processed
-        $sql = 'SELECT VI.data_id,V.date_visit,V.service_no,VI.item_id,I.name,I.code,U.name AS units,VI.quantity,VI.price,VI.notes '.
-               'FROM '.$table_visit.' AS V JOIN '.$table_visit_item.' AS VI ON(V.visit_id = VI.visit_id AND VI.price > 0) '.
-                     'LEFT JOIN '.$table_item.' AS I ON(VI.item_id = I.item_id) '.
-                     'LEFT JOIN '.$table_units.' AS U ON(I.units_id = U.units_id) '.
-               'WHERE V.contract_id = "'.$contract['contract_id'].'" AND V.status = "COMPLETED" AND V.service_no <> "" '.
-               'ORDER BY V.date_visit ';
+        $sql = 'SELECT VI.`data_id`,V.`date_visit`,V.`service_no`,VI.`item_id`,I.`name`,I.`code`,U.`name` AS `units`,VI.`quantity`,VI.`price`,VI.`notes` '.
+               'FROM `'.$table_visit.'` AS V JOIN `'.$table_visit_item.'` AS VI ON(V.`visit_id` = VI.`visit_id` AND VI.`price` > 0) '.
+                     'LEFT JOIN `'.$table_item.'` AS I ON(VI.`item_id` = I.`item_id`) '.
+                     'LEFT JOIN `'.$table_units.'` AS U ON(I.`units_id` = U.`units_id`) '.
+               'WHERE V.`contract_id` = "'.$contract['contract_id'].'" AND V.`status` = "COMPLETED" AND V.`service_no` <> "" '.
+               'ORDER BY V.`date_visit` ';
         $visit_items = $db->readSqlArray($sql);
         
         if($contract_items != 0) {
@@ -316,7 +316,7 @@ class Helpers {
         $invoice_no = $division['invoice_prefix'].($division['invoice_no']+1);
 
         //check invoice_no unique
-        $sql='SELECT * FROM '.$table_invoice.' WHERE invoice_no = "'.$db->escapeSql($invoice_no).'" ';
+        $sql='SELECT * FROM `'.$table_invoice.'` WHERE `invoice_no` = "'.$db->escapeSql($invoice_no).'" ';
         $invoice_dup=$db->readSqlRecord($sql);
         if($invoice_dup!=0) $error .=' Invoice No['.$invoice_no.'] has been used before!'; 
            
@@ -356,7 +356,7 @@ class Helpers {
         } 
 
         //finally update division invoice counter
-        $sql = 'UPDATE '.$table_division.' SET invoice_no = invoice_no + 1 WHERE division_id = "'.$contract['division_id'].'" ';
+        $sql = 'UPDATE `'.$table_division.'` SET `invoice_no` = `invoice_no` + 1 WHERE `division_id` = "'.$contract['division_id'].'" ';
         $db->executeSql($sql,$error_tmp);
         if($error_tmp !== '') throw new Exception('SERVICE_INVOICE_CREATE: Could not update division invoice no');
 
@@ -380,8 +380,8 @@ class Helpers {
         $location = self::get($db,TABLE_PREFIX,'client_location',$contract['location_id'],'location_id');
         //$contact = self::get($db,TABLE_PREFIX,'client_contact',$contract['contact_id'],'contact_id');
 
-        $sql = 'SELECT item_id,item_code,item_desc,quantity,units,unit_price,discount,tax,total '.
-               'FROM '.$table_items.' WHERE invoice_id = "'.$db->escapeSql($invoice_id).'" ';
+        $sql = 'SELECT `item_id`,`item_code`,`item_desc`,`quantity`,`units`,`unit_price`,`discount`,`tax`,`total` '.
+               'FROM `'.$table_items.'` WHERE `invoice_id` = "'.$db->escapeSql($invoice_id).'" ';
         $items = $db->readSqlArray($sql); 
 
      
@@ -520,9 +520,9 @@ class Helpers {
         //get client and all primary contact and location details 
         $client = self::getClient($db,TABLE_PREFIX,$contract['client_id']);
 
-        $sql = 'SELECT item_id,item_code,item_desc,quantity,units,unit_price,discount,tax,total '.
-               'FROM '.$table_items.' WHERE invoice_id = "'.$db->escapeSql($invoice_id).'" '.
-               'ORDER BY total DESC ';
+        $sql = 'SELECT `item_id`,`item_code`,`item_desc`,`quantity`,`units`,`unit_price`,`discount`,`tax`,`total` '.
+               'FROM `'.$table_items.'` WHERE `invoice_id` = "'.$db->escapeSql($invoice_id).'" '.
+               'ORDER BY `total` DESC ';
         $items = $db->readSqlArray($sql); 
 
      
@@ -664,8 +664,8 @@ class Helpers {
         }
 
         //check if invoice generated before and add version suffix to name if true
-        $sql = 'SELECT COUNT(*) FROM '.$table_file.' '.
-               'WHERE location_id = "'.$location_id.'" AND file_name_orig LIKE "INV%" ';
+        $sql = 'SELECT COUNT(*) FROM `'.$table_file.'` '.
+               'WHERE `location_id` = "'.$location_id.'" AND `file_name_orig` LIKE "INV%" ';
         $count = $db->readSqlValue($sql);
         if($count != 0) {
             $count = $count + 1;
@@ -742,8 +742,8 @@ class Helpers {
         $invoice_pdf_base = 'INV-'.$invoice['invoice_no'];
         $invoice_pdf_count = 0;
 
-        $sql = 'SELECT file_id,file_name_orig FROM '.TABLE_PREFIX.'file '.
-               'WHERE location_id ="INV'.$invoice_id.'" ORDER BY file_id DESC ';
+        $sql = 'SELECT `file_id`,`file_name_orig` FROM `'.TABLE_PREFIX.'file` '.
+               'WHERE `location_id` ="INV'.$invoice_id.'" ORDER BY `file_id` DESC ';
         $invoice_files = $db->readSqlList($sql);
         if($invoice_files != 0) {
             foreach($invoice_files as $file_id => $file_name) {
@@ -797,8 +797,8 @@ class Helpers {
         $division = self::get($db,$table_prefix,'division',$division_id);
         $no = $division['contract_no'] + 1;
         $code = $division['contract_prefix'].$no;
-        $sql = 'UPDATE '.$table_prefix.'division SET contract_no = contract_no + 1 '.
-               'WHERE division_id = "'.$db->escapeSql($division_id).'" ';
+        $sql = 'UPDATE `'.$table_prefix.'division` SET `contract_no` = `contract_no` + 1 '.
+               'WHERE `division_id` = "'.$db->escapeSql($division_id).'" ';
         $db->executeSql($sql,$error);
         if($error !== '') throw new Exception('SERVICE_CONTRACT_CALC: Could not update division contract no');
 
@@ -829,37 +829,38 @@ class Helpers {
 
 
         if($param['get'] === 'ALL' or $param['get'] === 'CONTRACT') {
-            $sql = 'SELECT C.contract_id,C.type_id,C.division_id,D.name AS division,C.client_id,CL.name AS client,C.agent_id,A.name AS agent,'.
-                          'CN.name AS contact, CN.position AS contact_position, CN.tel AS contact_tel, CN.cell AS contact_cell, CN.email AS contact_email, '.
-                          'C.client_code,C.signed_by,C.date_signed,C.date_renew,C.date_start,C.warranty_months,C.no_assistants,'.
-                          'C.notes_admin,C.notes_client,C.pay_method_id,P.name AS pay_method,'.
-                          'C.no_months,C.no_visits,C.visit_day_id,DY.name AS visit_day,C.visit_time_from,C.visit_time_to,'.
-                          'C.price,C.discount,C.time_estimate,C.price_visit,C.price_annual_pct '.
-                   'FROM '.$table_contract.' AS C '.
-                         'JOIN '.$table_division.' AS D ON(C.division_id = D.division_id) '.
-                         'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                         'LEFT JOIN '.$table_agent.' AS A ON(C.agent_id = A.agent_id) '.
-                         'LEFT JOIN '.$table_payment.' AS P ON(C.pay_method_id = P.method_id) '.
-                         'LEFT JOIN '.$table_contact.' AS CN ON(C.contact_id = CN.contact_id) '.
-                         'LEFT JOIN '.$table_day.' AS DY ON(C.visit_day_id = DY.day_id) '.
-                   'WHERE C.contract_id = "'.$db->escapeSql($contract_id).'" ';
+            $sql = 'SELECT C.`contract_id`,C.`type_id`,C.`division_id`,D.`name` AS `division`,C.`client_id`,CL.`name` AS `client`,C.`agent_id`,'.
+                          'A.`name` AS `agent`,CN.`name` AS `contact`, CN.`position` AS `contact_position`, CN.`tel` AS `contact_tel`, '.
+                          'CN.`cell` AS `contact_cell`, CN.`email` AS `contact_email`, '.
+                          'C.`client_code`,C.`signed_by`,C.`date_signed`,C.`date_renew`,C.`date_start`,C.`warranty_months`,C.`no_assistants`,'.
+                          'C.`notes_admin`,C.`notes_client`,C.`pay_method_id`,P.`name` AS `pay_method`,'.
+                          'C.`no_months`,C.`no_visits`,C.`visit_day_id`,DY.`name` AS `visit_day`,C.`visit_time_from`,C.`visit_time_to`,'.
+                          'C.`price`,C.`discount`,C.`time_estimate`,C.`price_visit`,C.`price_annual_pct` '.
+                   'FROM `'.$table_contract.'` AS C '.
+                         'JOIN `'.$table_division.'` AS D ON(C.`division_id` = D.`division_id`) '.
+                         'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                         'LEFT JOIN `'.$table_agent.'` AS A ON(C.`agent_id` = A.`agent_id`) '.
+                         'LEFT JOIN `'.$table_payment.'` AS P ON(C.`pay_method_id` = P.`method_id`) '.
+                         'LEFT JOIN `'.$table_contact.'` AS CN ON(C.`contact_id` = CN.`contact_id`) '.
+                         'LEFT JOIN `'.$table_day.'` AS DY ON(C.`visit_day_id` = DY.`day_id`) '.
+                   'WHERE C.`contract_id` = "'.$db->escapeSql($contract_id).'" ';
             $output['contract'] = $db->readSqlRecord($sql);
         }
         
         if($param['get'] === 'ALL' or $param['get'] === 'VISITS') {
-            $sql = 'SELECT V.visit_id,V.category_id,C.name AS category,V.round_id,R.name AS round,V.no_assistants,V.service_no,V.invoice_no, '.
-                          'V.date_booked,V.date_visit,V.notes,V.feedback_id,F.name AS feedback,F.type_id AS feedback_type '.
-                    'FROM '.$table_visit.' AS V JOIN '.$table_visit_category.' AS C ON(V.category_id = C.category_id) '.
-                          'JOIN '.$table_round.' AS R ON(V.round_id = R.round_id) '.
-                          'JOIN '.$table_feedback.' AS F ON(V.feedback_id = F.feedback_id) '.
-                    'WHERE V.contract_id = "'.$db->escapeSql($contract_id).'" ';
+            $sql = 'SELECT V.`visit_id`,V.`category_id`,C.`name` AS `category`,V.`round_id`,R.`name` AS `round`,V.`no_assistants`,V.`service_no`,V.`invoice_no`, '.
+                          'V.`date_booked`,V.`date_visit`,V.`notes`,V.`feedback_id`,F.`name` AS `feedback`,F.`type_id` AS `feedback_type` '.
+                    'FROM `'.$table_visit.'` AS V JOIN `'.$table_visit_category.'` AS C ON(V.`category_id` = C.`category_id`) '.
+                          'JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
+                          'JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
+                    'WHERE V.`contract_id` = "'.$db->escapeSql($contract_id).'" ';
             $output['visits'] = $db->readSqlArray($sql);
         }
 
         if($param['get'] === 'ALL' or $param['get'] === 'ITEMS') {
-            $sql = 'SELECT CI.item_id,I.name AS item,CI.price,CI.notes '.
-                   'FROM '.$table_contract_item.' AS CI JOIN '.$table_item.' AS I ON(CI.item_id = I.item_id) '.
-                   'WHERE CI.contract_id = "'.$db->escapeSql($contract_id).'" ';
+            $sql = 'SELECT CI.`item_id`,I.`name` AS `item`,CI.`price`,CI.`notes` '.
+                   'FROM `'.$table_contract_item.'` AS CI JOIN `'.$table_item.'` AS I ON(CI.`item_id` = I.`item_id`) '.
+                   'WHERE CI.`contract_id` = "'.$db->escapeSql($contract_id).'" ';
             $output['items'] = $db->readSqlArray($sql);
         }
 
@@ -917,22 +918,22 @@ class Helpers {
         $table_location_category = $table_prefix.'location_category';
 
         if($param['get'] === 'ALL' or $param['get'] === 'CLIENT') {
-            $sql = 'SELECT C.client_id,C.category_id,CC.name AS category,C.client_code,C.account_code,'.
-                          'C.company_title,C.company_no,C.tax_reference,C.sales_code '.
-                   'FROM '.$table_client.' AS C '.
-                   'JOIN '.$table_category.' AS CC ON(C.category_id = CC.category_id) '.
-                   'WHERE C.client_id = "'.$db->escapeSql($client_id).'" ';
+            $sql = 'SELECT C.`client_id`,C.`category_id`,CC.`name` AS `category`,C.`client_code`,C.`account_code`,'.
+                          'C.`company_title`,C.`company_no`,C.`tax_reference`,C.`sales_code` '.
+                   'FROM `'.$table_client.'` AS C '.
+                   'JOIN `'.$table_category.'` AS CC ON(C.`category_id` = CC.`category_id`) '.
+                   'WHERE C.`client_id` = "'.$db->escapeSql($client_id).'" ';
             $client['client'] = $db->readSqlRecord($sql,0);
         }
         
         //NB: this will only return first ranked contact in each type_id as readsqlArray() overwrites type_id key
         if($param['get'] === 'ALL' or $param['get'] === 'CONTACT') {
-            $sql = 'SELECT C.type_id,C.contact_id,C.name,C.location_id,L.name AS location,C.position,C.status,'.
-                          'C.cell,C.tel,C.email,C.cell_alt,C.tel_alt,C.email_alt '.
-                   'FROM '.$table_contact.' AS C '.
-                   'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
-                   'WHERE C.client_id = "'.$db->escapeSql($client_id).'" '.
-                   'ORDER BY C.type_id,C.sort DESC ';
+            $sql = 'SELECT C.`type_id`,C.`contact_id`,C.`name`,C.`location_id`,L.`name` AS `location`,C.`position`,C.`status`,'.
+                          'C.`cell`,C.`tel`,C.`email`,C.`cell_alt`,C.`tel_alt`,C.`email_alt` '.
+                   'FROM `'.$table_contact.'` AS C '.
+                   'JOIN `'.$table_location.'` AS L ON(C.`location_id` = L.`location_id`) '.
+                   'WHERE C.`client_id` = "'.$db->escapeSql($client_id).'" '.
+                   'ORDER BY C.`type_id`,C.`sort` DESC ';
             $client['contact'] = $db->readSqlArray($sql);
             if(!isset($client['contact']['PHYSICAL'])) {
                 $client['contact']['PHYSICAL'] = ['name'=>'No on premises contact setup'];
@@ -943,12 +944,12 @@ class Helpers {
         }
 
         if($param['get'] === 'ALL' or $param['get'] === 'LOCATION') {
-            $sql = 'SELECT L.type_id,L.location_id,L.name,C.name AS category,L.status,'.
-                          'L.address,L.size,L.tel,L.email,L.map_lng,L.map_lat '.
-                   'FROM '.$table_location.' AS L '.
-                   'LEFT JOIN '.$table_location_category.' AS C ON(L.category_id = C.category_id) '.
-                   'WHERE L.client_id = "'.$db->escapeSql($client_id).'" '.
-                   'ORDER BY L.type_id,L.sort DESC ';
+            $sql = 'SELECT L.`type_id`,L.`location_id`,L.`name`,C.`name` AS `category`,L.`status`,'.
+                          'L.`address`,L.`size`,L.`tel`,L.`email`,L.`map_lng`,L.`map_lat` '.
+                   'FROM `'.$table_location.'` AS L '.
+                   'LEFT JOIN `'.$table_location_category.'` AS C ON(L.`category_id` = C.`category_id`) '.
+                   'WHERE L.`client_id` = "'.$db->escapeSql($client_id).'" '.
+                   'ORDER BY L.`type_id`,L.`sort` DESC ';
             $client['location'] = $db->readSqlArray($sql);
             if(!isset($client['location']['PHYSICAL'])) {
                 $client['location']['PHYSICAL'] = ['name'=>'No physical location setup'];
@@ -973,12 +974,12 @@ class Helpers {
         $table_location = $table_prefix.'client_location';
         $table_location_category = $table_prefix.'location_category';
 
-        $sql = 'SELECT category_id FROM '.$table_location_category.' WHERE status <> "HIDE" ORDER BY sort LIMIT 1 ';
+        $sql = 'SELECT `category_id` FROM `'.$table_location_category.'` WHERE `status` <> "HIDE" ORDER BY `sort` LIMIT 1 ';
         $location_category_id = $db->readSqlValue($sql,0);
 
         $client = self::get($db,$table_prefix,'client',$client_id);
 
-        $sql = 'SELECT count(*) FROM '.$table_location.' WHERE client_id = "'.$db->escapeSql($client_id).'" ORDER BY sort';
+        $sql = 'SELECT count(*) FROM `'.$table_location.'` WHERE `client_id` = "'.$db->escapeSql($client_id).'" ORDER BY `sort`';
         $count = $db->readSqlValue($sql);
         if($count == 0) {
             $data = [];
@@ -997,7 +998,7 @@ class Helpers {
                 
         }
 
-        $sql = 'SELECT COUNT(*) FROM '.$table_contact.' WHERE client_id = "'.$db->escapeSql($client_id).'" ';
+        $sql = 'SELECT COUNT(*) FROM `'.$table_contact.'` WHERE `client_id` = "'.$db->escapeSql($client_id).'" ';
         $count = $db->readSqlValue($sql);
         if($count == 0) {
             $data = [];
@@ -1034,19 +1035,19 @@ class Helpers {
                 
         $calendar = new Calendar();
                 
-        $sql = 'SELECT V.visit_id,V.contract_id,V.user_id_booked,V.user_id_tech,U.name AS technician, '.
-                      'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
-                      'C.client_code, C.client_id,CL.name AS client,R.name AS round '.
-               'FROM '.$table_visit.' AS V '.
-                     'JOIN '.$table_contract.' AS C ON(V.contract_id = C.contract_id) '.
-                     'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                     'LEFT JOIN '.$table_user.' AS U ON(V.user_id_tech = U.user_id) '.
-                     'LEFT JOIN '.$table_round.' AS R ON(V.round_id = R.round_id) '.
-               'WHERE V.date_visit >= "'.$db->escapeSql($date_from).'" AND V.date_visit <= "'.$db->escapeSql($date_to).'" AND '.
-                     'V.time_from >= "'.$options['time_from'].'" AND V.time_from <= "'.$options['time_to'].'" ';
-        if($round_id !== 'ALL') $sql .= 'AND C.round_id = "'.$db->escapeSql($round_id).'" ';       
-        if($user_id_tech != 'ALL') $sql .= ' AND V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" ';
-        if($status != 'ALL') $sql .= ' AND V.status = "'.$db->escapeSql($status).'" ';
+        $sql = 'SELECT V.`visit_id`,V.`contract_id`,V.`user_id_booked`,V.`user_id_tech`,U.`name` AS `technician`, '.
+                      'V.`date_booked`,V.`date_visit`,V.`notes`,V.`status`,V.`time_from`,V.`time_to`,V.`status`, '.
+                      'C.`client_code`, C.`client_id`,CL.`name` AS `client`,R.`name` AS `round` '.
+               'FROM `'.$table_visit.'` AS V '.
+                     'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
+                     'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                     'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
+                     'LEFT JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
+               'WHERE V.`date_visit` >= "'.$db->escapeSql($date_from).'" AND V.`date_visit` <= "'.$db->escapeSql($date_to).'" AND '.
+                     'V.`time_from` >= "'.$options['time_from'].'" AND V.`time_from` <= "'.$options['time_to'].'" ';
+        if($round_id !== 'ALL') $sql .= 'AND C.`round_id` = "'.$db->escapeSql($round_id).'" ';       
+        if($user_id_tech != 'ALL') $sql .= ' AND V.`user_id_tech` = "'.$db->escapeSql($user_id_tech).'" ';
+        if($status != 'ALL') $sql .= ' AND V.`status` = "'.$db->escapeSql($status).'" ';
         
 
 

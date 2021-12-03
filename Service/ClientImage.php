@@ -28,7 +28,7 @@ class ClientImage extends Upload
         $param['label']     = 'name';
         $param['child_col'] = 'location_id';
         $param['child_prefix'] = $id_prefix;
-        $param['show_sql'] = 'SELECT CONCAT("Client: ",name) FROM '.TABLE_PREFIX.'client WHERE client_id = "{KEY_VAL}" ';
+        $param['show_sql'] = 'SELECT CONCAT("Client: ",`name`) FROM `'.TABLE_PREFIX.'client` WHERE `client_id` = "{KEY_VAL}" ';
         $this->setupMaster($param);
 
         $this->addAction(['type'=>'edit','text'=>'edit details of','icon_text'=>'edit']);

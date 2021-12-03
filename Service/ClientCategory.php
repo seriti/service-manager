@@ -31,9 +31,9 @@ class ClientCategory extends Table
         $this->addTableCol(['id'=>'sort','type'=>'INTEGER','title'=>'Sort order']);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
-        $this->addSql('WHERE','T.access_level >= "'.$this->access_rank.'" ');
+        $this->addSql('WHERE','T.`access_level` >= "'.$this->access_rank.'" ');
 
-        $this->addSortOrder('T.sort','Sort order','DEFAULT');
+        $this->addSortOrder('T.`sort`','Sort order','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
@@ -60,8 +60,8 @@ class ClientCategory extends Table
     } 
 
     protected function afterUpdate($id,$edit_type,$form) {
-        $sql = 'UPDATE '.$this->table.' SET access_level = "'.ACCESS_RANK[$form['access']].'" '.
-               'WHERE '.$this->key['id'].' = "'.$this->db->escapeSql($id).'" ';
+        $sql = 'UPDATE `'.$this->table.'` SET `access_level` = "'.ACCESS_RANK[$form['access']].'" '.
+               'WHERE `'.$this->key['id'].'` = "'.$this->db->escapeSql($id).'" ';
 
         $this->db->executeSql($sql,$error_tmp);  
          

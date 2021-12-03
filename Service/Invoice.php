@@ -27,7 +27,7 @@ class Invoice extends Table
         $this->addTableCol(['id'=>'invoice_id','type'=>'INTEGER','title'=>'Invoice ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract','edit_title'=>'Contract ID','edit'=>false]);
         $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no','edit'=>false]);
-        //$this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'name FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
+        //$this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'`name` FROM `'.TABLE_PREFIX.'client_contact` WHERE `contact_id`']);
         
         $this->addTableCol(['id'=>'date','type'=>'DATETIME','title'=>'Date on invoice','edit'=>true,]);
         $this->addTableCol(['id'=>'subtotal','type'=>'DECIMAL','title'=>'Subtotal','edit'=>false]);
@@ -39,9 +39,9 @@ class Invoice extends Table
         $this->addTableCol(['id'=>'notes_admin','type'=>'TEXT','title'=>'Admin Notes','hint'=>'These will NOT appear on invoice.','required'=>false,'list'=>true]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
-        $this->addSql('JOIN','LEFT JOIN '.TABLE_PREFIX.'contract AS C ON(T.contract_id = C.contract_id)');
+        $this->addSql('JOIN','LEFT JOIN `'.TABLE_PREFIX.'contract` AS C ON(T.`contract_id` = C.`contract_id`)');
                
-        $this->addSortOrder('T.invoice_id DESC','Most recent first','DEFAULT');
+        $this->addSortOrder('T.`invoice_id` DESC','Most recent first','DEFAULT');
 
         if($access['edit']) {
             $this->addAction(['type'=>'check_box','text'=>'']);
@@ -58,12 +58,12 @@ class Invoice extends Table
         $this->addSearchXtra('C.client_code','Contract code');
         $this->addSearchXtra('C.division_id','Division');
 
-        //$this->addSelect('contract_id','SELECT contract_id,client_code FROM '.TABLE_PREFIX.'contract ORDER BY client_code');
-        //$this->addSelect('contact_id','SELECT contact_id, name FROM '.TABLE_PREFIX.'client_contact ORDER BY name');
+        //$this->addSelect('contract_id','SELECT `contract_id`,`client_code` FROM `'.TABLE_PREFIX.'contract` ORDER BY `client_code`');
+        //$this->addSelect('contact_id','SELECT `contact_id`, `name` FROM `'.TABLE_PREFIX.'client_contact` ORDER BY `name`');
               
         
         $this->addSelect('status',['list'=>$this->status,'list_assoc'=>true]);
-        $this->addSelect('C.division_id','SELECT division_id, name FROM '.TABLE_PREFIX.'division ORDER BY sort');
+        $this->addSelect('C.division_id','SELECT `division_id`, `name` FROM `'.TABLE_PREFIX.'division` ORDER BY `sort`');
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'INV','max_no'=>100,
                            'icon'=>'<span class="glyphicon glyphicon-file" aria-hidden="true"></span>&nbsp;manage',
@@ -189,8 +189,8 @@ class Invoice extends Table
                         $audit_str .= 'invoice ID['.$invoice_id.'] ';
                                             
                         if($action === 'STATUS_CHANGE') {
-                            $sql = 'UPDATE '.$this->table.' SET status = "'.$this->db->escapeSql($status_change).'" '.
-                                   'WHERE invoice_id = "'.$this->db->escapeSql($invoice_id).'" ';
+                            $sql = 'UPDATE `'.$this->table.'` SET `status` = "'.$this->db->escapeSql($status_change).'" '.
+                                   'WHERE `invoice_id` = "'.$this->db->escapeSql($invoice_id).'" ';
                             $this->db->executeSql($sql,$error_tmp);
                             if($error_tmp === '') {
                                 $message_str = 'Status set['.$status_change.'] for invoice ID['.$invoice_id.'] ';
@@ -253,8 +253,8 @@ class Invoice extends Table
         } else {
             $error_tmp = '';
             
-            //FUCKING IDIOT-> $sql = 'DELETE FROM '.TABLE_PREFIX.'invoice_item WHERE item_id = "'.$this->db->escapeSql($id).'" ';
-            $sql = 'DELETE FROM '.TABLE_PREFIX.'invoice_item WHERE invoice_id = "'.$this->db->escapeSql($id).'" ';
+            //FUCKING IDIOT-> $sql = 'DELETE FROM `'.TABLE_PREFIX.'invoice_item` WHERE `item_id` = "'.$this->db->escapeSql($id).'" ';
+            $sql = 'DELETE FROM `'.TABLE_PREFIX.'invoice_item` WHERE `invoice_id` = "'.$this->db->escapeSql($id).'" ';
             $this->db->executeSql($sql,$error_tmp);
             if($error_tmp == '') {
                 $this->addMessage('Successfully deleted Invoice Items for '.$this->row_name.' ID['.$id.'] ');
@@ -263,7 +263,7 @@ class Invoice extends Table
             }
 
             $location_id = 'INV'.$id;
-            $sql = 'DELETE FROM '.TABLE_PREFIX.'file WHERE location_id = "'.$this->db->escapeSql($location_id).'" ';
+            $sql = 'DELETE FROM `'.TABLE_PREFIX.'file` WHERE `location_id` = "'.$this->db->escapeSql($location_id).'" ';
             $this->db->executeSql($sql,$error_tmp);
             if($error_tmp == '') {
                 $this->addMessage('Successfully deleted Invoice PDF for '.$this->row_name.' ID['.$id.'] ');

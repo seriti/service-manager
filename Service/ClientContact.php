@@ -19,11 +19,11 @@ class ClientContact extends Table
         $this->addForeignKey(['table'=>TABLE_PREFIX.'contract','col_id'=>'contact_id','message'=>'Contract exists using this contact']);
 
         $this->setupMaster(['table'=>TABLE_PREFIX.'client','key'=>'client_id','child_col'=>'client_id',
-                            'show_sql'=>'SELECT CONCAT("Client: ",name) FROM '.TABLE_PREFIX.'client WHERE client_id = "{KEY_VAL}" ']);
+                            'show_sql'=>'SELECT CONCAT("Client: ",`name`) FROM `'.TABLE_PREFIX.'client` WHERE `client_id` = "{KEY_VAL}" ']);
 
          
         $this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'contact ID','key'=>true,'key_auto'=>true,'list'=>true]);
-        $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'Location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);
+        $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'Location','join'=>'`name` FROM `'.TABLE_PREFIX.'client_location` WHERE `location_id`']);
         $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name']);
         $this->addTableCol(['id'=>'position','type'=>'STRING','title'=>'Position']);
         $this->addTableCol(['id'=>'type_id','type'=>'STRING','title'=>'Position type']);
@@ -37,7 +37,7 @@ class ClientContact extends Table
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
 
-        $this->addSortOrder('T.sort','Sort order','DEFAULT');
+        $this->addSortOrder('T.`sort`','Sort order','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
@@ -54,8 +54,8 @@ class ClientContact extends Table
     protected function beforeProcess($id) 
     {
         $this->addSelect('location_id',
-                         'SELECT location_id, name FROM '.TABLE_PREFIX.'client_location '.
-                         'WHERE client_id = "'.$this->master['key_val'].'" ORDER BY name');
+                         'SELECT `location_id`, `name` FROM `'.TABLE_PREFIX.'client_location` '.
+                         'WHERE `client_id` = "'.$this->master['key_val'].'" ORDER BY `name`');
     }
 
     protected function modifyRowValue($col_id,$data,&$value)

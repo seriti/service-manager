@@ -9,7 +9,9 @@ use App\Service\HelpersReport;
 
 class Report extends ReportTool
 {
-    protected $visit_status = ['ALL'=>'ALL entries','NEW'=>'Preliminary entries only','CONFIRMED'=>'Confirmed entries only','COMPLETED'=>'Completed visits only'];
+    //NB: FEEDBACK only applies within reporting context
+    protected $visit_status = ['ALL'=>'ALL entries','NEW'=>'Preliminary entries only','CONFIRMED'=>'Confirmed entries only',
+                               'COMPLETED'=>'Completed visits only','FEEDBACK'=>'Visits with feedback only'];
 
     protected $contract_status = ['ALL'=>'ALL contract statuses','NEW'=>'NEW contracts','OK'=>'OK contracts','HIDE'=>'Hidden contracts'];
     protected $contract_type = ['ALL'=>'SINGLE Shot & REPEAT contracts','SINGLE'=>'SINGLE Shot contracts','REPEAT'=>'REPEAT contracts'];
@@ -42,10 +44,11 @@ class Report extends ReportTool
         //$param = ['input'=>['select_division','select_format']];
         $this->addReport('WORK_DUE','Contract Services & Invoices due',$param); 
 
+        $param = ['input'=>['select_division','select_round','select_technician','select_date_period','select_visit_status','select_format']];
+        $this->addReport('VISIT_FEEDBACK','Contract visit feedback',$param); 
         
         
         $this->addInput('select_division','');
-        //$this->addInput('select_visit_status','');
         $this->addInput('select_contract_type','');
         $this->addInput('select_contract_status','');
         $this->addInput('select_round','');
@@ -53,6 +56,7 @@ class Report extends ReportTool
         $this->addInput('select_date','');
         $this->addInput('select_technician','');
         $this->addInput('select_user','');
+        $this->addInput('select_visit_status','');
         $this->addInput('select_format',''); 
     }
 
@@ -65,7 +69,7 @@ class Report extends ReportTool
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
             $param['xtra'] = ['ALL'=>'All divisions'];
-            $sql = 'SELECT division_id,name FROM '.TABLE_PREFIX.'division ORDER BY name'; 
+            $sql = 'SELECT `division_id`,`name` FROM `'.TABLE_PREFIX.'division` ORDER BY `name`'; 
             if(isset($form['division_id'])) $division_id = $form['division_id']; else $division_id = 'ALL';
             $html .= 'Division:&nbsp;'.Form::sqlList($sql,$this->db,'division_id',$division_id,$param);
         }
@@ -74,7 +78,7 @@ class Report extends ReportTool
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
             $param['xtra'] = ['ALL'=>'All rounds'];
-            $sql = 'SELECT round_id,name FROM '.TABLE_PREFIX.'service_round WHERE status <> "HIDE" ORDER BY sort'; 
+            $sql = 'SELECT `round_id`,`name` FROM `'.TABLE_PREFIX.'service_round` WHERE `status` <> "HIDE" ORDER BY `sort`'; 
             if(isset($form['round_id'])) $round_id = $form['round_id']; else $round_id = '';
             $html .= 'Round:&nbsp;'.Form::sqlList($sql,$this->db,'round_id',$round_id,$param);
         }
@@ -82,7 +86,8 @@ class Report extends ReportTool
         if($id === 'select_technician') {
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
-            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE status <> "HIDE" ORDER BY name'; 
+            $param['xtra'] = ['ALL'=>'All technicians'];
+            $sql = 'SELECT `user_id`,`name` FROM `'.TABLE_USER.'` WHERE `status` <> "HIDE" ORDER BY `name`'; 
             if(isset($form['user_id_tech'])) $user_id_tech = $form['user_id_tech']; else $user_id_tech = '';
             $html .= 'Technician:&nbsp;'.Form::sqlList($sql,$this->db,'user_id_tech',$user_id_tech,$param);
         }
@@ -91,7 +96,7 @@ class Report extends ReportTool
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
             $param['xtra'] = ['ALL'=>'All Users'];
-            $sql = 'SELECT user_id,name FROM '.TABLE_USER.' WHERE status <> "HIDE" ORDER BY name'; 
+            $sql = 'SELECT `user_id`,`name` FROM `'.TABLE_USER.'` WHERE `status` <> "HIDE" ORDER BY `name`'; 
             if(isset($form['user_id'])) $user_id = $form['user_id']; else $user_id = '';
             $html .= 'User:&nbsp;'.Form::sqlList($sql,$this->db,'user_id',$user_id,$param);
         }
@@ -214,6 +219,16 @@ class Report extends ReportTool
             $html = HelpersReport::workPlanning($this->db,'DUE',$form['division_id'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);
         }
+
+
+        if($id === 'VISIT_FEEDBACK') {
+            $options['user_id_tech'] = $form['user_id_tech'];
+            $html = HelpersReport::visitFeedback($this->db,$form['division_id'],$form['round_id'],$form['visit_status'],
+                                                 $form['date_from'],$form['date_to'],$options,$error);
+            if($error !== '') $this->addError($error);
+        }
+
+        
         
         return $html;
     }

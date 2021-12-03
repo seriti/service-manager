@@ -227,6 +227,7 @@ class SetupData extends SetupModuledata
                               `total` decimal(12,2) NOT NULL,
                               `date` datetime NOT NULL,
                               `notes` text NOT NULL,
+                              `notes_admin` text NOT NULL,
                               `status` VARCHAR(64) NOT NULL,
                               PRIMARY KEY (`invoice_id`)
                             ) ENGINE=InnoDB DEFAULT CHARSET=utf8');

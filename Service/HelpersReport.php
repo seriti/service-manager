@@ -9,6 +9,7 @@ use Seriti\Tools\Doc;
 use Seriti\Tools\Html;
 use Seriti\Tools\Pdf;
 use Seriti\Tools\Date;
+use Seriti\Tools\Secure;
 use Seriti\Tools\Upload;
 use Seriti\Tools\SITE_TITLE;
 use Seriti\Tools\BASE_UPLOAD;
@@ -25,6 +26,145 @@ use App\Service\Helpers;
 
 //static functions for service module
 class HelpersReport {
+
+    public static function visitFeedback($db,$division_id,$round_id,$status,$date_from,$date_to,$options = [],&$error)
+    {
+        $error = '';
+
+
+        if(!isset($options['output'])) $options['output'] = 'BROWSER';
+        if(!isset($options['format'])) $options['format'] = 'CSV';
+        $options['format'] = strtoupper($options['format']);
+
+        if(!isset($options['user_id_tech'])) $options['user_id_tech'] = 'ALL';
+        
+        if($division_id === 'ALL') {
+            $division_name = 'all divisions';
+        } else {
+            $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
+            if($division == 0) {
+                $error .= 'Invalid Division['.$division_id.'] selected.';
+            } else {
+                $division_name = $division['name'];
+            }    
+        }
+
+        if($round_id === 'ALL') {
+            $round_name = 'all rounds';
+        } else {
+            $round = Helpers::get($db,TABLE_PREFIX,'service_round',$round_id,'round_id');
+            if($round == 0) {
+                $error .= 'Invalid round['.$round_id.'] selected.';
+            } else {
+                $round_name = $round['name'];
+            }    
+        }
+     
+        
+        if($error !== '') return false;
+
+        $doc_name_base = str_replace(' ','_',$round_name).'_'.str_replace(' ','_',$division_name).'_'.strtolower($status).'_visits_from_'.
+                         Date::formatDate($date_from).'_to_'.Date::formatDate($date_to).'_on_'.date('Y-m-d');
+
+        $page_title = $round_name.' '.$division_name.' '.$status.' visits from '.Date::formatDate($date_from).' to '.Date::formatDate($date_to);
+
+        $table_visit = TABLE_PREFIX.'contract_visit';
+        $table_contract = TABLE_PREFIX.'contract';
+        $table_client = TABLE_PREFIX.'client';
+        $table_user = TABLE_USER;
+        $table_round = TABLE_PREFIX.'service_round';
+        $table_feedback = TABLE_PREFIX.'service_feedback';
+                
+        /*
+        SELECT V.visit_id,V.contract_id,V.user_id_booked,V.user_id_tech,U.name AS technician, '.
+                      'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
+                      'C.client_code, C.client_id,CL.name AS client,R.name AS round
+        */
+
+        $sql = 'SELECT CL.`name` AS `client`,U.`name` AS `technician`, '.
+                      'V.`date_visit`,V.`status`,F.`name` AS `feedback` '.
+               'FROM `'.$table_visit.'` AS V '.
+                     'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
+                     'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                     'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
+                     'LEFT JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
+                     'LEFT JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
+               'WHERE V.`date_visit` >= "'.$db->escapeSql($date_from).'" AND V.`date_visit` <= "'.$db->escapeSql($date_to).'" ';
+        if($division_id !== 'ALL') $sql .= 'AND C.`division_id` = "'.$db->escapeSql($division_id).'" ';    
+        if($round_id !== 'ALL') $sql .= 'AND C.`round_id` = "'.$db->escapeSql($round_id).'" ';       
+        if($options['user_id_tech'] != 'ALL') $sql .= 'AND V.`user_id_tech` = "'.$db->escapeSql($options['user_id_tech']).'" ';
+        if($status != 'ALL') {
+            if($status === 'FEEDBACK') {
+                $sql .= 'AND F.`name` IS NOT NULL ';
+            } else {
+                $sql .= 'AND V.`status` = "'.$db->escapeSql($status).'" ';    
+            }
+        }   
+        
+        $sql .= 'ORDER BY V.`date_visit`, F.`sort` ';
+
+        //$error .= $sql;
+
+        $visits = $db->readSqlResult($sql,false);
+        if($visits == 0) {
+            $error .= 'No visits found for: '.$page_title;
+        }
+
+        if($error !== '') return false;
+
+            
+
+        $col_width = array(40,40,20,20,60);
+        $col_type = array('','','DATE','','');
+
+        if($options['format'] === 'PDF') {
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
+            
+            $pdf = new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            
+            $pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options = [];
+            $pdf_options['font_size'] = 8;
+            $row_h = 6;
+            
+            $pdf->mysqlDrawTable($visits,$row_h,$col_width,$col_type,'L',$pdf_options);
+
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($doc_name,'D');    
+            exit;
+        }
+
+
+        if($options['format'] === 'HTML') {
+            $html_options = [];
+            $html_options['col_type'] = $col_type;
+            $html .= '<h2>'.$page_title.'</h2>';
+            $html .= Html::mysqlDumpHtml($visits,$html_options);
+        }
+
+        if($options['format'] === 'CSV') {
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.csv';
+            $csv_data = Csv::mysqlDumpCsv($visits);
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD','csv');
+            exit;
+        }               
+
+        return $html;
+    }
     
     public static function workPlanning($db,$mode,$division_id,$date_from,$date_to,$options,&$error)
     {
@@ -42,17 +182,17 @@ class HelpersReport {
         $ignore_date_visit = true;
 
         
-        $sql_where = 'C.date_start < "'.$db->escapeSql($date_to).'" ';
+        $sql_where = 'C.`date_start` < "'.$db->escapeSql($date_to).'" ';
 
-        if($options['type_id'] !== 'ALL') $sql_where .= 'AND C.type_id = "'.$db->escapeSql($options['type_id']).'" ';
+        if($options['type_id'] !== 'ALL') $sql_where .= 'AND C.`type_id` = "'.$db->escapeSql($options['type_id']).'" ';
 
-        if($options['status'] !== 'ALL') $sql_where .= 'AND C.status = "'.$db->escapeSql($options['status']).'" ';
+        if($options['status'] !== 'ALL') $sql_where .= 'AND C.`status` = "'.$db->escapeSql($options['status']).'" ';
 
         if($division_id === 'ALL') {
             $base_doc_name = 'ALL_divisions';
             $page_title = 'All divisions';
         } else {
-            $sql_where .= 'AND C.division_id = "'.$db->escapeSql($division_id).'" ';
+            $sql_where .= 'AND C.`division_id` = "'.$db->escapeSql($division_id).'" ';
 
             $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
             if($division == 0) $error .= 'Invalid Division['.$division_id.'] selected.';
@@ -77,17 +217,17 @@ class HelpersReport {
         $table_user = TABLE_USER;
              
         
-        $sql = 'SELECT C.contract_id,C.type_id,C.client_code,CL.name AS client,C.date_start,C.no_assistants,C.notes_admin, '.
-                      'R.name AS round, C.price_visit,C.price_audit,C.no_visits, '.
-                      '(SELECT COUNT(*) FROM '.$table_visit.' AS V WHERE V.contract_id = C.contract_id AND V.status IN("COMPLETED","INVOICED")) AS visit_count,  '.
-                      '(SELECT COUNT(*) FROM '.$table_invoice.' AS I WHERE I.contract_id = C.contract_id) AS invoice_count,  '.
-                      '(SELECT V.date_visit FROM '.$table_visit.' AS V WHERE V.contract_id = C.contract_id AND V.status IN("COMPLETED","INVOICED") ORDER BY V.date_visit DESC LIMIT 1) AS date_last_visit, '.
-                      '(SELECT DATE(I.date) FROM '.$table_invoice.' AS I WHERE I.contract_id = C.contract_id ORDER BY I.date DESC LIMIT 1) AS date_last_invoice '.
-               'FROM '.$table_contract.' AS C LEFT JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                     'LEFT JOIN '.$table_round.' AS R ON (C.round_id = R.round_id) '.
+        $sql = 'SELECT C.`contract_id`,C.`type_id`,C.`client_code`,CL.`name` AS `client`,C.`date_start`,C.`no_assistants`,C.`notes_admin`, '.
+                      'R.`name` AS `round`, C.`price_visit`,C.`price_audit`,C.`no_visits`, '.
+                      '(SELECT COUNT(*) FROM `'.$table_visit.'` AS V WHERE V.`contract_id` = C.`contract_id` AND V.`status` IN("COMPLETED","INVOICED")) AS `visit_count`,  '.
+                      '(SELECT COUNT(*) FROM `'.$table_invoice.'` AS I WHERE I.`contract_id` = C.`contract_id`) AS invoice_count,  '.
+                      '(SELECT V.`date_visit` FROM `'.$table_visit.'` AS V WHERE V.`contract_id` = C.`contract_id` AND V.`status` IN("COMPLETED","INVOICED") ORDER BY V.`date_visit` DESC LIMIT 1) AS `date_last_visit`, '.
+                      '(SELECT DATE(I.`date`) FROM `'.$table_invoice.'` AS I WHERE I.`contract_id` = C.`contract_id` ORDER BY I.`date` DESC LIMIT 1) AS `date_last_invoice` '.
+               'FROM `'.$table_contract.'` AS C LEFT JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                     'LEFT JOIN `'.$table_round.'` AS R ON (C.`round_id` = R.`round_id`) '.
                'WHERE '.$sql_where;
-        if(!$ignore_date_visit) $sql .= 'HAVING (date_last_visit IS NULL OR date_last_visit < "'.$db->escapeSql($date_last_visit).'") ';  
-        $sql .= 'ORDER BY R.name, C.date_start ';
+        if(!$ignore_date_visit) $sql .= 'HAVING (`date_last_visit` IS NULL OR `date_last_visit` < "'.$db->escapeSql($date_last_visit).'") ';  
+        $sql .= 'ORDER BY R.`name`, C.`date_start` ';
 
 
         $contracts = $db->readSqlArray($sql,false);
@@ -215,24 +355,25 @@ class HelpersReport {
         if($technician == 0) $error .= 'Invalid Technician user ID['.$user_id_tech.']';
         
         //get all confirmed visits        
-        $sql = 'SELECT V.visit_id,V.contract_id,V.user_id_booked,U.name AS booked_by,V.category_id,VC.name AS category, '.
-                      'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
-                      'C.client_code, C.notes_admin,C.notes_client,C.client_id,CL.name AS client,C.location_id,L.name AS location,L.address,  '.
-                      'C.contact_id,CN.name AS contact,CN.position AS contact_position,CN.tel,CN.tel_alt,CN.cell,CN.cell_alt, '.
-                      'R.name AS round '.
-               'FROM '.$table_visit.' AS V '.
-                     'LEFT JOIN '.$table_category.' AS VC ON(V.category_id = VC.category_id) '.   
-                     'JOIN '.$table_contract.' AS C ON(V.contract_id = C.contract_id) '.
-                     'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
-                     'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                     'JOIN '.$table_contact.' AS CN ON(C.contact_id = CN.contact_id) '.
-                     'LEFT JOIN '.$table_user.' AS U ON(V.user_id_booked = U.user_id) '.
-                     'LEFT JOIN '.$table_round.' AS R ON(V.round_id = R.round_id) '.
-               'WHERE V.status = "CONFIRMED" AND '.
-                     'V.date_visit = "'.$db->escapeSql($date).'" AND '.
-                     'V.user_id_tech = "'.$db->escapeSql($user_id_tech).'" ';
-        if($round_id !== 'ALL') $sql .= 'AND V.round_id = "'.$db->escapeSql($round_id).'" ';
-        $sql .= 'ORDER BY V.time_from';
+        $sql = 'SELECT V.`visit_id`,V.`contract_id`,V.`user_id_booked`,U.`name` AS `booked_by`,V.`category_id`,VC.`name` AS `category`, '.
+                      'V.`date_booked`,V.`date_visit`,V.`notes`,V.`status`,V.`time_from`,V.`time_to`,V.`status`, '.
+                      'C.`client_code`, C.`notes_admin`,C.`notes_client`,C.`client_id`,CL.`name` AS `client`,C.`location_id`,'.
+                      'L.`name` AS `location`,L.`address`,  '.
+                      'C.`contact_id`,CN.`name` AS `contact`,CN.`position` AS `contact_position`,CN.`tel`,CN.`tel_alt`,CN.`cell`,CN.`cell_alt`, '.
+                      'R.`name` AS `round` '.
+               'FROM `'.$table_visit.'` AS V '.
+                     'LEFT JOIN `'.$table_category.'` AS VC ON(V.`category_id` = VC.`category_id`) '.   
+                     'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
+                     'JOIN `'.$table_location.'` AS L ON(C.`location_id` = L.`location_id`) '.
+                     'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                     'JOIN `'.$table_contact.'` AS CN ON(C.`contact_id` = CN.`contact_id`) '.
+                     'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_booked` = U.`user_id`) '.
+                     'LEFT JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
+               'WHERE V.`status` = "CONFIRMED" AND '.
+                     'V.`date_visit` = "'.$db->escapeSql($date).'" AND '.
+                     'V.`user_id_tech` = "'.$db->escapeSql($user_id_tech).'" ';
+        if($round_id !== 'ALL') $sql .= 'AND V.`round_id` = "'.$db->escapeSql($round_id).'" ';
+        $sql .= 'ORDER BY V.`time_from`';
 
         $visits = $db->readSqlArray($sql,false);
         if($visits == 0) $error .= 'No CONFIRMED diary visits found for technician on date '.$date;
@@ -362,14 +503,14 @@ class HelpersReport {
                 $pdf->Ln($row_h);
                 
                 //get last visit
-                $sql = 'SELECT V.visit_id,V.user_id_tech,U.name AS technician,V.category_id,C.name AS category, '.
-                              'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status '.
-                       'FROM '.$table_visit.' AS V '.
-                             'LEFT JOIN '.$table_category.' AS C ON(V.category_id = C.category_id) '.   
-                             'LEFT JOIN '.$table_user.' AS U ON(V.user_id_tech = U.user_id) '.
-                       'WHERE V.contract_id = "'.$db->escapeSql($visit['contract_id']).'" AND V.status = "COMPLETED" AND '.
-                             'V.date_visit < "'.$db->escapeSql($date).'"  '.
-                       'ORDER BY V.date_visit DESC LIMIT 1';
+                $sql = 'SELECT V.`visit_id`,V.`user_id_tech`,U.`name` AS `technician`,V.`category_id`,C.`name` AS `category`, '.
+                              'V.`date_booked`,V.`date_visit`,V.`notes`,V.`status`,V.`time_from`,V.`time_to`,V.`status` '.
+                       'FROM `'.$table_visit.'` AS V '.
+                             'LEFT JOIN `'.$table_category.'` AS C ON(V.`category_id` = C.`category_id`) '.   
+                             'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
+                       'WHERE V.`contract_id` = "'.$db->escapeSql($visit['contract_id']).'" AND V.`status` = "COMPLETED" AND '.
+                             'V.`date_visit` < "'.$db->escapeSql($date).'"  '.
+                       'ORDER BY V.`date_visit` DESC LIMIT 1';
                 $last_visit = $db->readSqlRecord($sql);  
                 if($last_visit == 0) {
                     $str = 'No previous visit on record.';
@@ -417,17 +558,17 @@ class HelpersReport {
         $type_str = '';
 
         if($options['type_id'] !== 'ALL') {
-            $sql_where .= 'AND C.type_id = "'.$db->escapeSql($options['type_id']).'" ';
+            $sql_where .= 'AND C.`type_id` = "'.$db->escapeSql($options['type_id']).'" ';
             $type_str = $options['type_id'].'_'; 
         }    
         
-        if($options['status'] !== 'ALL') $sql_where .= 'AND C.status = "'.$db->escapeSql($options['status']).'"  ';
+        if($options['status'] !== 'ALL') $sql_where .= 'AND C.`status` = "'.$db->escapeSql($options['status']).'"  ';
         
         if($division_id === 'ALL') {
             $base_doc_name = 'ALL_divisions';
             $page_title = 'All divisions';
         } else {
-            $sql_where .= 'AND D.division_id = "'.$db->escapeSql($division_id).'" ';
+            $sql_where .= 'AND D.`division_id` = "'.$db->escapeSql($division_id).'" ';
 
             $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
             if($division == 0) $error .= 'Invalid Division['.$division_id.'] selected.';
@@ -439,10 +580,10 @@ class HelpersReport {
         $base_doc_name .= '_'.$options['status'].'_'.$type_str.'Contracts_without_';
         $page_title .= ' '.$options['status'].' '.$type_str.'Contracts without ';  
 
-        $sql = 'SELECT C.contract_id,D.name AS division,C.type_id AS type,CL.name AS client,C.client_code,C.date_signed '.
-               'FROM '.$table_contract.' AS C '.
-               'JOIN '.$table_division.' AS D ON(C.division_id = D.division_id) '.
-               'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) ';
+        $sql = 'SELECT C.`contract_id`,D.`name` AS `division`,C.`type_id` AS `type`,CL.`name` AS `client`,C.`client_code`,C.`date_signed` '.
+               'FROM `'.$table_contract.'` AS C '.
+               'JOIN `'.$table_division.'` AS D ON(C.`division_id` = D.`division_id`) '.
+               'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) ';
         if($type === 'INVOICE') {
             $base_doc_name .= 'invoices_';
             $page_title .= 'invoices ';
@@ -451,9 +592,9 @@ class HelpersReport {
             $col_type=array('','','','','','DATE');
 
 
-            $sql .= 'LEFT JOIN '.$table_invoice.' AS I ON(C.contract_id = I.contract_id AND I.date >= "'.$date_from.'" AND I.date <= "'.$date_to.'") '.
-                    'WHERE I.invoice_no IS NULL '.$sql_where.
-                    'ORDER BY D.name, C.date_signed DESC ';
+            $sql .= 'LEFT JOIN `'.$table_invoice.'` AS I ON(C.`contract_id` = I.`contract_id` AND I.`date` >= "'.$date_from.'" AND I.`date` <= "'.$date_to.'") '.
+                    'WHERE I.`invoice_no` IS NULL '.$sql_where.
+                    'ORDER BY D.`name`, C.`date_signed` DESC ';
         }
 
         if($type === 'VISIT') {
@@ -463,9 +604,9 @@ class HelpersReport {
             $col_width=array(20,30,20,30,20,20);
             $col_type=array('','','','','','DATE');
 
-            $sql .= 'LEFT JOIN '.$table_visit.' AS V ON(C.contract_id = V.contract_id AND V.date_visit >= "'.$date_from.'" AND V.date_visit <= "'.$date_to.'") '.
-                    'WHERE V.visit_id IS NULL '.$sql_where.
-                    'ORDER BY D.name, C.date_signed DESC ';
+            $sql .= 'LEFT JOIN `'.$table_visit.'` AS V ON(C.`contract_id` = V.`contract_id` AND V.`date_visit` >= "'.$date_from.'" AND V.`date_visit` <= "'.$date_to.'") '.
+                    'WHERE V.`visit_id` IS NULL '.$sql_where.
+                    'ORDER BY D.`name`, C.`date_signed` DESC ';
         }
 
         $base_doc_name .= 'from_'.$date_from.'_to_'.$date_to;
@@ -566,14 +707,14 @@ class HelpersReport {
         $table_location = TABLE_PREFIX.'client_location';
         
         //NB: C.client_code is Contract/order no NOT client additional CL.client_code
-        $sql = 'SELECT I.invoice_id,I.invoice_no,I.date,I.subtotal,I.discount,I.tax,I.total,I.status,I.contract_id, '.
-                      'C.client_id,C.client_code,CL.account_code,L.address as location_address '.
-               'FROM '.$table_invoice.' AS I JOIN '.$table_contract.' AS C ON(I.contract_id = C.contract_id) '.
-                     'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                     'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
-               'WHERE C.division_id = "'.$db->escapeSql($division_id).'" AND '.
-                     'I.date >= "'.$db->escapeSql($date_from).'" AND I.date <= "'.$db->escapeSql($date_to).'" '.
-               'ORDER BY I.date, I.invoice_id ';
+        $sql = 'SELECT I.`invoice_id`,I.`invoice_no`,I.`date`,I.`subtotal`,I.`discount`,I.`tax`,I.`total`,I.`status`,I.`contract_id`, '.
+                      'C.`client_id`,C.`client_code`,CL.`account_code`,L.`address` as `location_address` '.
+               'FROM `'.$table_invoice.'` AS I JOIN `'.$table_contract.'` AS C ON(I.`contract_id` = C.`contract_id`) '.
+                     'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                     'JOIN `'.$table_location.'` AS L ON(C.`location_id` = L.`location_id`) '.
+               'WHERE C.`division_id` = "'.$db->escapeSql($division_id).'" AND '.
+                     'I.`date` >= "'.$db->escapeSql($date_from).'" AND I.`date` <= "'.$db->escapeSql($date_to).'" '.
+               'ORDER BY I.`date`, I.`invoice_id` ';
                     
         $invoices = $db->readSqlArray($sql);
         if($invoices == 0) {
@@ -581,24 +722,33 @@ class HelpersReport {
             return false;
         } 
         
+        $clean_options = ['context' => 'input'];
+
         $csv_data = '';
         foreach($invoices as $invoice_id => $invoice) {
 
             $date = Date::mysqlGetDate($invoice['date']);
             $client = Helpers::getClient($db,TABLE_PREFIX,$invoice['client_id']);
             
+            //Pastel crappy import code fails on a ' or "" and who knows what else
+            $client_name = Secure::clean('string',$client['client']['company_title'],$clean_options);
+            $client_contact_name = Secure::clean('string',$client['contact']['INVOICE']['name'],$clean_options);
+            $client_contact_tel = Secure::clean('string',$client['contact']['INVOICE']['tel'],$clean_options);
+
             $location = explode("\n",$invoice['location_address']);
             for($i = 0; $i < 3; $i++) {
                 //Pastel does not recognise " as an escape character so "" will blow it
-                if(!isset($location[$i])) $location[$i] = ''; else $location[$i] = str_replace(["\r",'"'],'',$location[$i]);
+                if(!isset($location[$i])) $location[$i] = ''; else $location[$i] = Secure::clean('string',$location[$i],$clean_options);
+                //str_replace(["\r",'"'],'',$location[$i]);
             }
             $deliver_to = explode("\n",$client['location']['INVOICE']['address']);
             for($i = 0; $i < 5; $i++) {
-                if(!isset($deliver_to[$i])) $deliver_to[$i] = ''; else $deliver_to[$i] = str_replace(["\r",'"'],'',$deliver_to[$i]);
+                if(!isset($deliver_to[$i])) $deliver_to[$i] = ''; else $deliver_to[$i] = Secure::clean('string',$deliver_to[$i],$clean_options);
+                //str_replace(["\r",'"'],'',$deliver_to[$i]);
             }
 
-            $sql = 'SELECT item_id,item_code,item_desc,quantity,units,unit_price,discount,tax,total '.
-                   'FROM '.$table_invoice_item.' WHERE invoice_id = "'.$db->escapeSql($invoice_id).'" ';
+            $sql = 'SELECT `item_id`,`item_code`,`item_desc`,`quantity`,`units`,`unit_price`,`discount`,`tax`,`total` '.
+                   'FROM `'.$table_invoice_item.'` WHERE `invoice_id` = "'.$db->escapeSql($invoice_id).'" ';
             $items = $db->readSqlArray($sql);
 
             if(INVOICE_SETUP['tax_inclusive']) $inclusive = 'Y'; else $inclusive = 'N';
@@ -620,7 +770,7 @@ class HelpersReport {
             $line[] = Csv::csvPrep($invoice['discount']); //Discount, Numeric, nominal i assume
             //invoice message 1-3, 3 separate fields of 30 characters maximum each
             //$client_detail = $client['client']['company_title']."\n".$location['address'];
-            $line[] = Csv::csvPrep($client['client']['company_title']);//$location[0];
+            $line[] = Csv::csvPrep($client_name);//$location[0];
             $line[] = Csv::csvPrep($location[0]);
             $line[] = Csv::csvPrep($location[1]);
             //Delivery Address 1-5, 5 separate fields of 30 characters maximum each
@@ -633,9 +783,9 @@ class HelpersReport {
             $line[] = ''; //Sales Analysis Code, 5 characters maximum
             $line[] = '30'; //Settlement Terms, Numeric, 0-32 ??
             $line[] = Date::formatDate($date,'ARRAY','DD-MM-YYYY',['separator'=>'/']); //Document Date, Character,DD/MM/YYYY
-            $line[] = Csv::csvPrep($client['contact']['INVOICE']['tel']); //Telephone, 16 characters maximum CLIENT contact???
+            $line[] = Csv::csvPrep($client_contact_tel); //Telephone, 16 characters maximum CLIENT contact???
             $line[] = ''; //Fax number , 16 characters maximum
-            $line[] = Csv::csvPrep($client['contact']['INVOICE']['name']); //contact person, 16 characters maximum
+            $line[] = Csv::csvPrep($client_contact_name); //contact person, 16 characters maximum
             $line[] = '1'; //Exchange Rate, Numeric, 1 in foreign currency, 7.6 maximum 
             $line[] = ''; //Freight Method, 10 characters maximum
             $line[] = ''; //Ship/Deliver, 16 Characters maximum
@@ -667,10 +817,12 @@ class HelpersReport {
                 $line[] = $discount_type; //Discount type, Character, 0=None, 1=Settlement, 2=Invoice, 3=Both
                 $line[] = $discount_pct; //Discount Percentage, Character, Omit decimals, for example 12.5% = 1250
 
-                //Pastel doesd not recognise "/" code divider that itself exports!!
+                //Pastel does not recognise "/" code divider that itself exports!!
                 $item_code = Csv::csvPrep(str_replace('/','',$item['item_code']));
+                $item_desc = Secure::clean('string',$item['item_desc'],$clean_options);
+                
                 $line[] = Csv::csvPrep(substr($item_code,0,15)); //Code, Character, 15 maximum
-                $line[] = Csv::csvPrep(substr($item['item_desc'],-40)); //Descriptiom, Character, 40 maximum, counting from right!
+                $line[] = Csv::csvPrep(substr($item_desc,-40)); //Descriptiom, Character, 40 maximum, counting from right!
                 $line[] = '6'; //Line type, Character, 4=Inventory, 6=GL, 7=Remarks
                 $line[] = ''; //Projects code, Character, 5 maximum
                 $line[] = ''; //Store, Character, 3 maximum
@@ -730,14 +882,14 @@ class HelpersReport {
         $table_location = TABLE_PREFIX.'client_location';
         
         //NB: C.client_code is Contract/order no NOT client additional CL.client_code
-        $sql = 'SELECT I.invoice_id,I.invoice_no,I.date,I.subtotal,I.discount,I.tax,I.total,I.status,I.contract_id, '.
-                      'C.client_code AS contract_code,CL.name AS client,CL.account_code,L.address as location_address '.
-               'FROM '.$table_invoice.' AS I JOIN '.$table_contract.' AS C ON(I.contract_id = C.contract_id) '.
-                     'JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                     'JOIN '.$table_location.' AS L ON(C.location_id = L.location_id) '.
-               'WHERE I.date >= "'.$db->escapeSql($date_from).'" AND I.date <= "'.$db->escapeSql($date_to).'" ';
-        if($division_id !== 'ALL') $sql .= 'AND C.division_id = "'.$db->escapeSql($division_id).'" ';       
-               'ORDER BY I.date, I.invoice_id ';
+        $sql = 'SELECT I.`invoice_id`,I.`invoice_no`,I.`date`,I.`subtotal`,I.`discount`,I.`tax`,I.`total`,I.`status`,I.`contract_id`, '.
+                      'C.`client_code` AS `contract_code`,CL.`name` AS `client`,CL.`account_code`,L.`address` AS `location_address` '.
+               'FROM `'.$table_invoice.'` AS I JOIN `'.$table_contract.'` AS C ON(I.`contract_id` = C.`contract_id`) '.
+                     'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                     'JOIN `'.$table_location.'` AS L ON(C.`location_id` = L.`location_id`) '.
+               'WHERE I.`date` >= "'.$db->escapeSql($date_from).'" AND I.`date` <= "'.$db->escapeSql($date_to).'" ';
+        if($division_id !== 'ALL') $sql .= 'AND C.`division_id` = "'.$db->escapeSql($division_id).'" ';       
+               'ORDER BY I.`date`, I.`invoice_id` ';
                     
         $invoices = $db->readSqlResult($sql);
         if($invoices == 0) {
@@ -841,19 +993,20 @@ class HelpersReport {
         $table_division = TABLE_PREFIX.'division';
         $table_user = TABLE_USER;
         
-        $sql_base = 'SELECT D.division_id,D.name AS division,U.name AS user, SUM(C.price) AS total_price, SUM(C.price_visit) AS total_visit, SUM(C.price_audit) AS total_audit '.
-                    'FROM '.$table_contract.' AS C '.
-                    'JOIN '.$table_division.' AS D ON(C.division_id = D.division_id) ';
+        $sql_base = 'SELECT D.`division_id`,D.`name` AS `division`,U.`name` AS `user`, SUM(C.`price`) AS `total_price`, '.
+                           'SUM(C.`price_visit`) AS `total_visit`, SUM(C.`price_audit`) AS `total_audit` '.
+                    'FROM `'.$table_contract.'` AS C '.
+                    'JOIN `'.$table_division.'` AS D ON(C.`division_id` = D.`division_id`) ';
 
 
-        $sql_where = 'WHERE C.date_signed >= "'.$db->escapeSql($date_from).'" AND C.date_signed <= "'.$db->escapeSql($date_to).'" ';
-        if($division_id !== 'ALL') $sql_where .= 'AND C.division_id = "'.$db->escapeSql($division_id).'" ';
+        $sql_where = 'WHERE C.`date_signed` >= "'.$db->escapeSql($date_from).'" AND C.`date_signed` <= "'.$db->escapeSql($date_to).'" ';
+        if($division_id !== 'ALL') $sql_where .= 'AND C.`division_id` = "'.$db->escapeSql($division_id).'" ';
 
         $sql_user = ['responsible'=>'','sold'=>'','signed'=>'','checked'=>''];
         foreach($sql_user as $key=>$sql) {
-            $sql = $sql_base.' JOIN '.$table_user.' AS U ON(C.user_id_'.$key.' = U.user_id) '.$sql_where;
-            if($options['user_id'] !== 'ALL') $sql .= 'AND C.user_id_'.$key.' = "'.$db->escapeSql($options['user_id']).'" ';
-            $sql .= 'GROUP BY D.division_id,C.user_id_'.$key;
+            $sql = $sql_base.' JOIN `'.$table_user.'` AS U ON(C.`user_id_'.$key.'` = U.`user_id`) '.$sql_where;
+            if($options['user_id'] !== 'ALL') $sql .= 'AND C.`user_id_'.$key.'` = "'.$db->escapeSql($options['user_id']).'" ';
+            $sql .= 'GROUP BY D.`division_id`,C.`user_id_'.$key.'` ';
             $sql_user[$key] = $sql;
         }
         

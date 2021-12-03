@@ -19,27 +19,32 @@ class ServiceVisit extends Table
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
         $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract','edit_title'=>'Contract ID']);
-        $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'visit_category WHERE category_id']);
-        $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service round','join'=>'name FROM '.TABLE_PREFIX.'service_round WHERE round_id']);
+        $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'visit_category` WHERE `category_id`']);
+        $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service round',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'service_round` WHERE `round_id`']);
         $this->addTableCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no','required'=>false]);
         $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no','edit'=>false]);
         
-        $this->addTableCol(['id'=>'user_id_booked','type'=>'INTEGER','title'=>'User Booked','join'=>'CONCAT(name,": ",email) FROM '.TABLE_USER.' WHERE user_id','edit'=>false,'list'=>false]);
-        $this->addTableCol(['id'=>'user_id_tech','type'=>'INTEGER','title'=>'Assigned technician','join'=>'CONCAT(name,": ",email) FROM '.TABLE_USER.' WHERE user_id']);
+        $this->addTableCol(['id'=>'user_id_booked','type'=>'INTEGER','title'=>'User Booked',
+                            'join'=>'CONCAT(`name`,": ",`email`) FROM `'.TABLE_USER.'` WHERE `user_id`','edit'=>false,'list'=>false]);
+        $this->addTableCol(['id'=>'user_id_tech','type'=>'INTEGER','title'=>'Assigned technician',
+                            'join'=>'CONCAT(`name`,": ",`email`) FROM `'.TABLE_USER.'` WHERE `user_id`']);
         $this->addTableCol(['id'=>'date_booked','type'=>'DATETIME','title'=>'Date booked','edit'=>false,'list'=>false]);
         $this->addTableCol(['id'=>'date_visit','type'=>'DATE','title'=>'Date visit','new'=>date('Y-m-d')]);
         $this->addTableCol(['id'=>'time_from','type'=>'TIME','title'=>'Time from','required'=>true]);
         $this->addTableCol(['id'=>'time_to','type'=>'TIME','title'=>'Time to','required'=>true]);
         $this->addTableCol(['id'=>'no_assistants','type'=>'INTEGER','title'=>'No. assistants']);
         
-        $this->addTableCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'name FROM '.TABLE_PREFIX.'service_feedback WHERE feedback_id']);
+        $this->addTableCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'service_feedback` WHERE `feedback_id`']);
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false,'list'=>true]);
 
         //$this->addSql('WHERE','T.status <> "NEW" AND T.status <> "CONFIRMED" ');
-        $this->addSql('JOIN','LEFT JOIN '.TABLE_PREFIX.'contract AS C ON(T.contract_id = C.contract_id)');
-        $this->addSql('JOIN','LEFT JOIN '.TABLE_PREFIX.'client AS CL ON(C.client_id = CL.client_id)');
+        $this->addSql('JOIN','LEFT JOIN `'.TABLE_PREFIX.'contract` AS C ON(T.`contract_id` = C.`contract_id`)');
+        $this->addSql('JOIN','LEFT JOIN `'.TABLE_PREFIX.'client` AS CL ON(C.`client_id` = CL.`client_id`)');
                
-        $this->addSortOrder('T.visit_id DESC','Most recent first','DEFAULT');
+        $this->addSortOrder('T.`visit_id` DESC','Most recent first','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
@@ -51,16 +56,16 @@ class ServiceVisit extends Table
         $this->addSearchXtra('C.division_id','Division');
         $this->addSearchXtra('CL.name','Client name');
 
-        //$this->addSelect('contract_id','SELECT contract_id,client_code FROM '.TABLE_PREFIX.'contract ORDER BY client_code');
-        $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort');
-        $this->addSelect('round_id','SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort');
-        $this->addSelect('feedback_id','SELECT feedback_id, name FROM '.TABLE_PREFIX.'service_feedback ORDER BY type_id, sort');
-        $this->addSelect('C.division_id','SELECT division_id, name FROM '.TABLE_PREFIX.'division ORDER BY sort');
+        //$this->addSelect('contract_id','SELECT `contract_id`,`client_code` FROM `'.TABLE_PREFIX.'contract` ORDER BY `client_code`');
+        $this->addSelect('category_id','SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'visit_category` ORDER BY `sort`');
+        $this->addSelect('round_id','SELECT `round_id`, `name` FROM `'.TABLE_PREFIX.'service_round` ORDER BY `sort`');
+        $this->addSelect('feedback_id','SELECT `feedback_id`, `name` FROM `'.TABLE_PREFIX.'service_feedback` ORDER BY `type_id`, `sort`');
+        $this->addSelect('C.division_id','SELECT `division_id`, `name` FROM `'.TABLE_PREFIX.'division` ORDER BY `sort`');
         
         //$status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRM booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
         $status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRMED booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
         $this->addSelect('status',['list'=>$status,'list_assoc'=>true]);
-        $this->addSelect('user_id_tech','SELECT user_id, name FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY name');
+        $this->addSelect('user_id_tech','SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`');
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'VST','max_no'=>100,
                            'icon'=>'<span class="glyphicon glyphicon-file" aria-hidden="true"></span>&nbsp;manage',

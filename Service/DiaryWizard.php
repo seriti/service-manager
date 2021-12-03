@@ -99,17 +99,18 @@ class DiaryWizard extends Wizard
             $this->data['round'] = Helpers::get($this->db,TABLE_PREFIX,'service_round',$round_id,'round_id');
 
             //NB: expecting 1:monday/2:tuesday....etc
-            $sql = 'SELECT day_id,LOWER(name) FROM '.TABLE_PREFIX.'service_day ORDER BY sort ';
+            $sql = 'SELECT `day_id`,LOWER(`name`) FROM `'.TABLE_PREFIX.'service_day` ORDER BY `sort` ';
             $this->data['visit_days'] = $this->db->readSqlList($sql); 
 
-            $sql = 'SELECT C.contract_id,C.type_id,C.client_code,CL.name AS client,C.visit_day_id,C.visit_time_from,C.visit_time_to,C.time_estimate,C.date_start,C.no_assistants,C.notes_admin, '.
-                          '(SELECT V.date_visit FROM '.$table_visit.' AS V WHERE V.contract_id = C.contract_id ORDER BY V.date_visit DESC LIMIT 1) AS date_last_visit '.
-                   'FROM '.$table_contract.' AS C LEFT JOIN '.$table_client.' AS CL ON(C.client_id = CL.client_id) '.
-                   'WHERE C.division_id = "'.$this->db->escapeSql($division_id).'" AND C.round_id = "'.$this->db->escapeSql($round_id).'" AND C.type_id = "'.$this->db->escapeSql($type_id).'" ';
-            if($client_name !== '') $sql .= 'AND CL.name LIKE "%'.$this->db->escapeSql($client_name).'%" ';     
-            if($client_code !== '') $sql .= 'AND C.client_code LIKE "%'.$this->db->escapeSql($client_code).'%" '; 
+            $sql = 'SELECT C.`contract_id`,C.`type_id`,C.`client_code`,CL.`name` AS `client`,C.`visit_day_id`,C.`visit_time_from`,'.
+                          'C.`visit_time_to`,C.`time_estimate`,C.`date_start`,C.`no_assistants`,C.`notes_admin`, '.
+                          '(SELECT V.`date_visit` FROM `'.$table_visit.'` AS V WHERE V.`contract_id` = C.`contract_id` ORDER BY V.`date_visit` DESC LIMIT 1) AS date_last_visit '.
+                   'FROM `'.$table_contract.'` AS C LEFT JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                   'WHERE C.`division_id` = "'.$this->db->escapeSql($division_id).'" AND C.`round_id` = "'.$this->db->escapeSql($round_id).'" AND C.`type_id` = "'.$this->db->escapeSql($type_id).'" ';
+            if($client_name !== '') $sql .= 'AND CL.`name` LIKE "%'.$this->db->escapeSql($client_name).'%" ';     
+            if($client_code !== '') $sql .= 'AND C.`client_code` LIKE "%'.$this->db->escapeSql($client_code).'%" '; 
             if(!$ignore_date_visit) $sql .= 'HAVING (date_last_visit IS NULL OR date_last_visit < "'.$this->db->escapeSql($date_last_visit).'") ';  
-            $sql .= 'ORDER BY C.division_id,C.date_start ';
+            $sql .= 'ORDER BY C.`division_id`,C.`date_start` ';
 
             $contracts = $this->db->readSqlArray($sql); 
             if($contracts == 0) {

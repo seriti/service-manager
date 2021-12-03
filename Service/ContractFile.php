@@ -28,7 +28,7 @@ class ContractFile extends Upload
         $param['label']     = 'name';
         $param['child_col'] = 'location_id';
         $param['child_prefix'] = $id_prefix;
-        $param['show_sql'] = 'SELECT CONCAT("Contract[",contract_id,"] ",client_code) FROM '.TABLE_PREFIX.'contract WHERE contract_id = "{KEY_VAL}" ';
+        $param['show_sql'] = 'SELECT CONCAT("Contract[",`contract_id`,"] ",`client_code`) FROM `'.TABLE_PREFIX.'contract` WHERE `contract_id` = "{KEY_VAL}" ';
         $this->setupMaster($param);
 
         $this->addAction(['type'=>'edit','text'=>'edit details of','icon_text'=>'edit']);

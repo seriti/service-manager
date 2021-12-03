@@ -57,20 +57,25 @@ class DiaryVisit Extends Record
             if($mode === 'new') $this->addMessage('Create a new visit entry for any client contract allocated to round');
             
             $round = Helpers::get($this->db,TABLE_PREFIX,'service_round',$this->round_id,'round_id');
-            $this->addRecordCol(array('id'=>'contract_id','type'=>'INTEGER','title'=>$round['name'].' round contract','join'=>'CONCAT("contract[",contract_id,"] - ",client_code) FROM  '.TABLE_PREFIX.'contract WHERE contract_id'));
+            $this->addRecordCol(array('id'=>'contract_id','type'=>'INTEGER','title'=>$round['name'].' round contract',
+                                      'join'=>'CONCAT("contract[",`contract_id`,"] - ",`client_code`) FROM `'.TABLE_PREFIX.'contract` WHERE `contract_id`'));
             
-            $this->addSelect('contract_id','SELECT contract_id,CONCAT("contract[",contract_id,"] - ",client_code) FROM '.TABLE_PREFIX.'contract WHERE round_id = "'.$this->db->escapeSql($this->round_id).'" ');
+            $this->addSelect('contract_id','SELECT `contract_id`,CONCAT("contract[",`contract_id`,"] - ",`client_code`) FROM `'.TABLE_PREFIX.'contract` WHERE `round_id` = "'.$this->db->escapeSql($this->round_id).'" ');
         } 
         
-        $this->addRecordCol(array('id'=>'user_id_booked','type'=>'INTEGER','title'=>'User booked','join'=>'CONCAT(name,": ",email) FROM '.TABLE_USER.' WHERE user_id','edit'=>false));
-        $this->addRecordCol(array('id'=>'user_id_tech','type'=>'INTEGER','title'=>'Assigned technician','join'=>'CONCAT(name,": ",email) FROM '.TABLE_USER.' WHERE user_id'));
+        $this->addRecordCol(array('id'=>'user_id_booked','type'=>'INTEGER','title'=>'User booked',
+                                  'join'=>'CONCAT(`name`,": ",`email`) FROM `'.TABLE_USER.'` WHERE `user_id`','edit'=>false));
+        $this->addRecordCol(array('id'=>'user_id_tech','type'=>'INTEGER','title'=>'Assigned technician',
+                                  'join'=>'CONCAT(`name`,": ",`email`) FROM `'.TABLE_USER.'` WHERE `user_id`'));
         $this->addRecordCol(array('id'=>'date_booked','type'=>'DATETIME','title'=>'Date booked','edit'=>false));
-        $this->addRecordCol(array('id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'visit_category WHERE category_id','edit'=>true));
+        $this->addRecordCol(array('id'=>'category_id','type'=>'INTEGER','title'=>'Category',
+                                  'join'=>'`name` FROM `'.TABLE_PREFIX.'visit_category` WHERE `category_id`','edit'=>true));
         $this->addRecordCol(array('id'=>'date_visit','type'=>'DATE','title'=>'Date visit','required'=>true,'new'=>date('Y-m-d')));
         $this->addRecordCol(array('id'=>'time_from','type'=>'TIME','title'=>'Time from','required'=>true));
         $this->addRecordCol(array('id'=>'time_to','type'=>'TIME','title'=>'Time to','required'=>true));
         $this->addRecordCol(array('id'=>'no_assistants','type'=>'INTEGER','title'=>'No. assistants','edit'=>true));
-        $this->addRecordCol(array('id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'name FROM '.TABLE_PREFIX.'service_feedback WHERE feedback_id','edit'=>true));
+        $this->addRecordCol(array('id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback',
+                                  'join'=>'`name` FROM `'.TABLE_PREFIX.'service_feedback` WHERE `feedback_id`','edit'=>true));
         $this->addRecordCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no','required'=>false]);
         $this->addRecordCol(array('id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false));
 
@@ -79,9 +84,9 @@ class DiaryVisit Extends Record
         
         $status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRM booking','COMPLETED'=>'Completed visit'];
         $this->addSelect('status',['list'=>$status,'list_assoc'=>true]);
-        $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort');
-        $this->addSelect('feedback_id','SELECT feedback_id, name FROM '.TABLE_PREFIX.'service_feedback ORDER BY sort');
-        $this->addSelect('user_id_tech','SELECT user_id, name FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY name');
+        $this->addSelect('category_id','SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'visit_category` ORDER BY `sort`');
+        $this->addSelect('feedback_id','SELECT `feedback_id`, `name` FROM `'.TABLE_PREFIX.'service_feedback` ORDER BY `sort`');
+        $this->addSelect('user_id_tech','SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`');
        
     }   
 

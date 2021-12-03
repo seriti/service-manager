@@ -19,7 +19,7 @@ class Client extends Table
         $this->addForeignKey(['table'=>TABLE_PREFIX.'client_location','col_id'=>'client_id','message'=>'Client locations exist for this Client']);
 
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client ID','key'=>true,'key_auto'=>true]);
-        $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'client_category WHERE category_id']);
+        $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'`name` FROM `'.TABLE_PREFIX.'client_category` WHERE `category_id`']);
         $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Account code','required'=>false,'hint'=>'Use this to identify client with your accounting system']);
         //NB: not to be confused with Contract.client_code  Could use as any external client code
         //$this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Client code','required'=>false,'hint'=>'Use this to identify client with any other external system']);
@@ -44,7 +44,7 @@ class Client extends Table
 
         $this->addSearch(['client_id','category_id','account_code','name','company_title','company_no','tax_reference','status'],['rows'=>3]);
 
-        $this->addSelect('category_id','SELECT category_id, name FROM '.TABLE_PREFIX.'client_category ORDER BY sort');
+        $this->addSelect('category_id','SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'client_category` ORDER BY `sort`');
         $status = ['OK','HIDE'];
         $this->addSelect('status',['list'=>$status,'list_assoc'=>false]);
 
@@ -103,15 +103,15 @@ class Client extends Table
 
         /*
         if($data['client_code'] != '') {
-            $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
-                   'WHERE client_code = "'.$this->db->escapeSql($data['client_code']).'" AND client_id <> "'.$this->db->escapeSql($id).'" ';
+            $sql = 'SELECT COUNT(*) FROM `'.$this->table.'` '.
+                   'WHERE `client_code` = "'.$this->db->escapeSql($data['client_code']).'" AND `client_id` <> "'.$this->db->escapeSql($id).'" ';
             $count = $this->db->readSqlValue($sql);
             if($count != 0) $error .= 'Client code['.$data['client_code'].'] is NOT unique. Another client has been assigned that code.';
         }
 
         if($data['account_code'] != '') {
-            $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
-                   'WHERE account_code = "'.$this->db->escapeSql($data['account_code']).'" AND client_id <> "'.$this->db->escapeSql($id).'" ';
+            $sql = 'SELECT COUNT(*) FROM `'.$this->table.'` '.
+                   'WHERE `account_code` = "'.$this->db->escapeSql($data['account_code']).'" AND `client_id` <> "'.$this->db->escapeSql($id).'" ';
             $count = $this->db->readSqlValue($sql);
             if($count != 0) $error .= 'Client account code['.$data['account_code'].'] is NOT unique. Another client has been assigned that account code.';
         }
@@ -133,8 +133,8 @@ class Client extends Table
         } 
 
         if($data['account_code'] != '') {
-            $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
-                   'WHERE account_code = "'.$this->db->escapeSql($data['account_code']).'" AND client_id <> "'.$this->db->escapeSql($id).'" ';
+            $sql = 'SELECT COUNT(*) FROM `'.$this->table.'` '.
+                   'WHERE `account_code` = "'.$this->db->escapeSql($data['account_code']).'" AND `client_id` <> "'.$this->db->escapeSql($id).'" ';
             $count = $this->db->readSqlValue($sql);
             if($count != 0) {
                 $msg .= 'Client account code['.$data['account_code'].'] is NOT unique. '.$count.' clients are also using that account code.';
@@ -148,7 +148,7 @@ class Client extends Table
     {
         $error_tmp = '';
 
-        $sql = 'DELETE FROM '.TABLE_PREFIX.'client_contact WHERE client_id = "'.$this->db->escapeSql($id).'" ';
+        $sql = 'DELETE FROM `'.TABLE_PREFIX.'client_contact` WHERE `client_id` = "'.$this->db->escapeSql($id).'" ';
         $this->db->executeSql($sql,$error_tmp);
         if($error_tmp == '') {
             $this->addMessage('Successfully deleted contacts for '.$this->row_name.' ID['.$id.'] ');
@@ -156,7 +156,7 @@ class Client extends Table
             $this->addError('Could not delete contacts for '.$this->row_name.' ID['.$id.'] ');
         } 
 
-        $sql = 'DELETE FROM '.TABLE_PREFIX.'client_location WHERE client_id = "'.$this->db->escapeSql($id).'" ';
+        $sql = 'DELETE FROM `'.TABLE_PREFIX.'client_location` WHERE `client_id` = "'.$this->db->escapeSql($id).'" ';
         $this->db->executeSql($sql,$error_tmp);
         if($error_tmp == '') {
             $this->addMessage('Successfully deleted locations for '.$this->row_name.' ID['.$id.'] ');

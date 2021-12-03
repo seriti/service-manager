@@ -37,7 +37,8 @@ class Contract extends Table
         $this->addColFixed(['id'=>'type_id','value'=>$param['type']]);
 
         $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'contract ID','key'=>true,'key_auto'=>true]);
-        $this->addTableCol(['id'=>'division_id','type'=>'INTEGER','title'=>'Division','join'=>'name FROM '.TABLE_PREFIX.'division WHERE division_id']);
+        $this->addTableCol(['id'=>'division_id','type'=>'INTEGER','title'=>'Division',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'division` WHERE `division_id`']);
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client','onchange'=>'clientChange()']);
         $this->addTableCol(['id'=>'client_code','type'=>'STRING','title'=>'Contract code','new'=>'CALCULATE',
                             'hint'=>'A unique code used to identify contract to client. CALCULATE default will increment division contract counter']);
@@ -45,19 +46,27 @@ class Contract extends Table
         if(INVOICE_SETUP['contract_item'] === 'account_code') {
             $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Accounting code','required'=>false,
                                 'hint'=>'Use this to identify contract as invoice item with your     accounting system']);
-            $this->addSelect('account_code',['sql'=>'SELECT code, CONCAT(code,":",description) FROM '.TABLE_PREFIX.'account_code ORDER BY sort',
+            $this->addSelect('account_code',['sql'=>'SELECT `code`, CONCAT(`code`,":",`description`) FROM `'.TABLE_PREFIX.'account_code` ORDER BY `sort`',
                                          'xtra'=>['SELECT'=>'Please select an accounting code for invoicing']]);
         }    
-        $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'Location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);
-        $this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact','join'=>'CONCAT(name,"-",contact_id) FROM '.TABLE_PREFIX.'client_contact WHERE contact_id']);
-        $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service Round','join'=>'name FROM '.TABLE_PREFIX.'service_round WHERE round_id']);
+        $this->addTableCol(['id'=>'location_id','type'=>'INTEGER','title'=>'Location',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'client_location` WHERE `location_id`']);
+        $this->addTableCol(['id'=>'contact_id','type'=>'INTEGER','title'=>'Contact',
+                            'join'=>'CONCAT(`name`,"-",`contact_id`) FROM `'.TABLE_PREFIX.'client_contact` WHERE `contact_id`']);
+        $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service Round',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'service_round` WHERE `round_id`']);
         
         
-        $this->addTableCol(['id'=>'agent_id','type'=>'INTEGER','title'=>'Agent','join'=>'name FROM '.TABLE_PREFIX.'agent WHERE agent_id']);
-        $this->addTableCol(['id'=>'user_id_responsible','type'=>'INTEGER','title'=>'User responsible','join'=>'name FROM '.TABLE_USER.' WHERE user_id','list'=>false]);
-        $this->addTableCol(['id'=>'user_id_sold','type'=>'INTEGER','title'=>'User sold','join'=>'name FROM '.TABLE_USER.' WHERE user_id','list'=>false]);
-        $this->addTableCol(['id'=>'user_id_signed','type'=>'INTEGER','title'=>'User signed','join'=>'name FROM '.TABLE_USER.' WHERE user_id','list'=>false]);
-        $this->addTableCol(['id'=>'user_id_checked','type'=>'INTEGER','title'=>'User checked','join'=>'name FROM '.TABLE_USER.' WHERE user_id','list'=>false]);
+        $this->addTableCol(['id'=>'agent_id','type'=>'INTEGER','title'=>'Agent',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'agent` WHERE `agent_id`']);
+        $this->addTableCol(['id'=>'user_id_responsible','type'=>'INTEGER','title'=>'User responsible',
+                            'join'=>'`name` FROM `'.TABLE_USER.'` WHERE `user_id`','list'=>false]);
+        $this->addTableCol(['id'=>'user_id_sold','type'=>'INTEGER','title'=>'User sold',
+                            'join'=>'`name` FROM `'.TABLE_USER.'` WHERE `user_id`','list'=>false]);
+        $this->addTableCol(['id'=>'user_id_signed','type'=>'INTEGER','title'=>'User signed',
+                             'join'=>'`name` FROM `'.TABLE_USER.'` WHERE `user_id`','list'=>false]);
+        $this->addTableCol(['id'=>'user_id_checked','type'=>'INTEGER','title'=>'User checked',
+                            'join'=>'`name` FROM `'.TABLE_USER.'` WHERE `user_id`','list'=>false]);
         $this->addTableCol(['id'=>'signed_by','type'=>'STRING','title'=>'Signed by','hint'=>'Name of client representative who signed contract']);
         $this->addTableCol(['id'=>'date_signed','type'=>'DATE','title'=>'Date signed','new'=>date('Y-m-d')]);
         $this->addTableCol(['id'=>'date_start','type'=>'DATETIME','title'=>'Date start']);
@@ -67,7 +76,8 @@ class Contract extends Table
             $this->addTableCol(['id'=>'date_renew','type'=>'DATE','title'=>'Date renew','new'=>date('Y-m-d')]);
             $this->addTableCol(['id'=>'no_months','type'=>'INTEGER','title'=>'Contract months','new'=>12]);
             $this->addTableCol(['id'=>'no_visits','type'=>'INTEGER','title'=>'No visits','new'=>12,'hint'=>'How many visits are planned over total contract period']);
-            $this->addTableCol(['id'=>'visit_day_id','type'=>'INTEGER','title'=>'Preferred visit day','join'=>'name FROM '.TABLE_PREFIX.'service_day WHERE day_id']);
+            $this->addTableCol(['id'=>'visit_day_id','type'=>'INTEGER','title'=>'Preferred visit day',
+                                'join'=>'`name` FROM `'.TABLE_PREFIX.'service_day` WHERE `day_id`']);
             $this->addTableCol(['id'=>'visit_time_from','type'=>'TIME','title'=>'Preferred visit time from','new'=>'10:00']);
             $this->addTableCol(['id'=>'visit_time_to','type'=>'TIME','title'=>'Preferred visit time to','new'=>'12:00']);
             $this->addTableCol(['id'=>'time_estimate','type'=>'INTEGER','title'=>'Time estimate(minutes)','new'=>60]);
@@ -98,16 +108,17 @@ class Contract extends Table
 
         $this->addTableCol(['id'=>'warranty_months','type'=>'INTEGER','title'=>'Warranty months','new'=>12]);
         $this->addTableCol(['id'=>'no_assistants','type'=>'INTEGER','title'=>'No assistants required','new'=>1]);
-        $this->addTableCol(['id'=>'pay_method_id','type'=>'INTEGER','title'=>'Payment method','join'=>'name FROM '.TABLE_PREFIX.'pay_method WHERE pay_method_id']);
+        $this->addTableCol(['id'=>'pay_method_id','type'=>'INTEGER','title'=>'Payment method',
+                            'join'=>'`name` FROM `'.TABLE_PREFIX.'pay_method` WHERE `pay_method_id`']);
         $this->addTableCol(['id'=>'notify_prior','type'=>'BOOLEAN','title'=>'Notify prior']);
 
         $this->addTableCol(['id'=>'notes_admin','type'=>'TEXT','title'=>'Admin notes','required'=>false,'list'=>false]);
         $this->addTableCol(['id'=>'notes_client','type'=>'TEXT','title'=>'Client notes','required'=>false,'list'=>false]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
-        $this->addSql('WHERE','T.type_id = "'.$param['type'].'" ');
+        $this->addSql('WHERE','T.`type_id` = "'.$param['type'].'" ');
 
-        $this->addSortOrder('T.contract_id DESC','Most recent first','DEFAULT');
+        $this->addSortOrder('T.`contract_id` DESC','Most recent first','DEFAULT');
 
         $this->addAction(['type'=>'check_box','text'=>'']);
 
@@ -120,19 +131,20 @@ class Contract extends Table
                   
         $this->addSearch($search,['rows'=>$search_rows]);
                 
-        $this->addSelect('client_id','SELECT client_id, name FROM '.TABLE_PREFIX.'client ORDER BY name');
-        $this->addSelect('division_id','SELECT division_id, name FROM '.TABLE_PREFIX.'division ORDER BY sort');
-        $this->addSelect('client_id','SELECT client_id, name FROM '.TABLE_PREFIX.'client ORDER BY name');
-        //$this->addSelect('location_id','SELECT location_id, name FROM '.TABLE_PREFIX.'client_location ORDER BY sort');
+        $this->addSelect('client_id','SELECT `client_id`, `name` FROM `'.TABLE_PREFIX.'client` ORDER BY `name`');
+        $this->addSelect('division_id','SELECT `division_id`, `name` FROM `'.TABLE_PREFIX.'division` ORDER BY `sort`');
+        $this->addSelect('client_id','SELECT `client_id`, `name` FROM `'.TABLE_PREFIX.'client` ORDER BY `name`');
+        //$this->addSelect('location_id','SELECT `location_id`, `name` FROM `'.TABLE_PREFIX.'client_location` ORDER BY `sort`');
         $this->addSelect('location_id','SELECT "0","Unknown"'); //just a dummy for modification by onchange
-        $this->addSelect('agent_id','SELECT agent_id, name FROM '.TABLE_PREFIX.'agent ORDER BY sort');
-        $this->addSelect('pay_method_id','SELECT method_id, name FROM '.TABLE_PREFIX.'pay_method ORDER BY sort');
+        $this->addSelect('agent_id','SELECT `agent_id`, `name` FROM `'.TABLE_PREFIX.'agent` ORDER BY `sort`');
+        $this->addSelect('pay_method_id','SELECT `method_id`, `name` FROM `'.TABLE_PREFIX.'pay_method` ORDER BY `sort`');
 
-        $this->addSelect('contact_id','SELECT contact_id, name FROM '.TABLE_PREFIX.'client_contact ORDER BY name');
-        $this->addSelect('round_id','(SELECT "0","No round assigned") UNION ALL (SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort)');
-        $this->addSelect('visit_day_id','SELECT day_id, name FROM '.TABLE_PREFIX.'service_day ORDER BY sort');
+        $this->addSelect('contact_id','SELECT `contact_id`, `name` FROM `'.TABLE_PREFIX.'client_contact` ORDER BY `name`');
+        $this->addSelect('round_id','(SELECT "0","No round assigned") UNION ALL (SELECT `round_id`, `name` FROM `'.TABLE_PREFIX.'service_round` ORDER BY `sort`)');
+        $this->addSelect('visit_day_id','SELECT `day_id`, `name` FROM `'.TABLE_PREFIX.'service_day` ORDER BY `sort`');
 
-        $sql = 'SELECT '.$this->user_cols['id'].','.$this->user_cols['name'].' FROM '.TABLE_USER.' WHERE zone <> "PUBLIC" AND status <> "HIDE" ORDER BY '.$this->user_cols['name'];
+        $sql = 'SELECT `'.$this->user_cols['id'].'`,`'.$this->user_cols['name'].'` FROM `'.TABLE_USER.'` '.
+               'WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `'.$this->user_cols['name'].'`';
         $this->addSelect('user_id_responsible',$sql);
         $this->addSelect('user_id_sold',$sql);
         $this->addSelect('user_id_signed',$sql);
@@ -177,8 +189,8 @@ class Contract extends Table
             $data['client_code'] = Helpers::getContractCode($this->db,TABLE_PREFIX,$data['division_id']); 
         }
 
-        $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
-               'WHERE client_code = "'.$this->db->escapeSql($data['client_code']).'" AND contract_id <> "'.$this->db->escapeSql($id).'" ';
+        $sql = 'SELECT COUNT(*) FROM `'.$this->table.'` '.
+               'WHERE `client_code` = "'.$this->db->escapeSql($data['client_code']).'" AND `contract_id` <> "'.$this->db->escapeSql($id).'" ';
         $count = $this->db->readSqlValue($sql);
         if($count != 0) $error .= 'Client code['.$data['client_code'].'] is NOT unique to contract. You must enter a client code that has not been used before.';
             
@@ -230,7 +242,7 @@ class Contract extends Table
                      Form::arrayList($this->status,'status_change',$status_change,true,$param).
                      '</span>'; 
             
-            $sql = 'SELECT round_id, name FROM '.TABLE_PREFIX.'service_round ORDER BY sort';
+            $sql = 'SELECT `round_id`, `name` FROM `'.TABLE_PREFIX.'service_round` ORDER BY `sort`';
             //$param['class'] = 'form-control input-medium input-inline';       
             $html .= '<span id="round_select" style="display:none"> Round&raquo;'.
                      Form::sqlList($sql,$this->db,'round_id',$round_id,$param).
@@ -277,8 +289,8 @@ class Contract extends Table
                         $audit_str .= 'contract ID['.$contract_id.'] ';
                                             
                         if($action === 'STATUS_CHANGE') {
-                            $sql = 'UPDATE '.$this->table.' SET status = "'.$this->db->escapeSql($status_change).'" '.
-                                   'WHERE contract_id = "'.$this->db->escapeSql($contract_id).'" ';
+                            $sql = 'UPDATE `'.$this->table.'` SET `status` = "'.$this->db->escapeSql($status_change).'" '.
+                                   'WHERE `contract_id` = "'.$this->db->escapeSql($contract_id).'" ';
                             $this->db->executeSql($sql,$error_tmp);
                             if($error_tmp === '') {
                                 $message_str = 'Status set['.$status_change.'] for Contract ID['.$contract_id.'] ';
@@ -292,8 +304,8 @@ class Contract extends Table
                         }
 
                         if($action === 'ROUND_CHANGE') {
-                            $sql = 'UPDATE '.$this->table.' SET round_id = "'.$this->db->escapeSql($round_id).'" '.
-                                   'WHERE contract_id = "'.$this->db->escapeSql($contract_id).'" ';
+                            $sql = 'UPDATE `'.$this->table.'` SET `round_id` = "'.$this->db->escapeSql($round_id).'" '.
+                                   'WHERE `contract_id` = "'.$this->db->escapeSql($contract_id).'" ';
                             $this->db->executeSql($sql,$error_tmp);
                             if($error_tmp === '') {
                                 $message_str = 'Round set['.$round['name'].'] for Contract ID['.$contract_id.'] ';

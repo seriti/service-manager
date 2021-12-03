@@ -21,7 +21,7 @@ class ItemUnits extends Table
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
 
-        $this->addSortOrder('T.sort ','Sort order','DEFAULT');
+        $this->addSortOrder('T.`sort` ','Sort order','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);

@@ -79,9 +79,9 @@ class ContractWizard extends Wizard
             
             $table_item = $this->table_prefix.'service_item';
             $table_price = $this->table_prefix.'service_price';
-            $sql = 'SELECT I.item_id, I.name '.
-                               'FROM '.$table_item.' AS I JOIN  '.$table_price.' AS P ON()'.
-                               'WHERE I.division_id = "'.$this->db->escapeSql($division_id).'" ORDER BY name';
+            $sql = 'SELECT I.`item_id`, I.`name` '.
+                   'FROM `'.$table_item.'` AS I JOIN  `'.$table_price.'` AS P ON()'.
+                   'WHERE I.`division_id` = "'.$this->db->escapeSql($division_id).'" ORDER BY `name`';
 
         } 
         
@@ -89,9 +89,9 @@ class ContractWizard extends Wizard
         if($this->page_no == 2) {
 
             //get item list for validation and messages
-            $sql = 'SELECT item_id,name FROM '.TABLE_PREFIX.'item '.
-                   'WHERE status <> "HIDE" '.
-                   'ORDER BY name';
+            $sql = 'SELECT `item_id`,`name` FROM `'.TABLE_PREFIX.'item` '.
+                   'WHERE `status` <> "HIDE" '.
+                   'ORDER BY `name`';
             $items = $this->db->readSqlList($sql);
 
             $item_count = $this->form['item_count'];
@@ -269,7 +269,7 @@ class ContractWizard extends Wizard
             $this->saveData('data');
 
             //get extended user info
-            $sql = 'SELECT * FROM '.$this->table_prefix.'user_extend WHERE user_id = "'.$this->user_id.'" ';
+            $sql = 'SELECT * FROM `'.$this->table_prefix.'user_extend` WHERE `user_id` = "'.$this->user_id.'" ';
             $user_extend = $this->db->readSqlRecord($sql);
             
             if($user_extend != 0) {

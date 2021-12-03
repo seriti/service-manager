@@ -52,8 +52,8 @@ class Ajax
         $error = '';
                
         $client_id = Secure::clean('alpha',$form['client_id']);
-        $sql = 'SELECT location_id, name FROM '.$this->table_prefix.'client_location '.
-               'WHERE client_id = "'.$this->db->escapeSql($client_id).'" AND status <> "HIDE" ORDER BY sort';    
+        $sql = 'SELECT `location_id`, `name` FROM `'.$this->table_prefix.'client_location` '.
+               'WHERE `client_id` = "'.$this->db->escapeSql($client_id).'" AND `status` <> "HIDE" ORDER BY `sort`';    
         
         $locations = $this->db->readSqlList($sql);    
         if($locations == 0) $error = 'No locations found for client ID['.$client_id.']';
@@ -71,8 +71,8 @@ class Ajax
         $html = '';
        
         $client_id = Secure::clean('alpha',$form['client_id']);
-        $sql = 'SELECT contact_id, name FROM '.$this->table_prefix.'client_contact '.
-               'WHERE client_id = "'.$this->db->escapeSql($client_id).'" AND status <> "HIDE" ORDER BY sort';    
+        $sql = 'SELECT `contact_id`, `name` FROM `'.$this->table_prefix.'client_contact` '.
+               'WHERE `client_id` = "'.$this->db->escapeSql($client_id).'" AND `status` <> "HIDE" ORDER BY `sort`';    
         
         $contacts = $this->db->readSqlList($sql);    
         if($contacts == 0) $error = 'No contacts found for client ID['.$client_id.']';
@@ -95,8 +95,8 @@ class Ajax
         if($contract == 0) {
             $error .= 'Invalid contract ID['.$contract_id.']';
         } else {
-            $sql = 'SELECT contact_id, name FROM '.$this->table_prefix.'client_contact '.
-                   'WHERE client_id = "'.$this->db->escapeSql($contract['client_id']).'" AND status <> "HIDE" ORDER BY sort';    
+            $sql = 'SELECT `contact_id`, `name` FROM `'.$this->table_prefix.'client_contact` '.
+                   'WHERE `client_id` = "'.$this->db->escapeSql($contract['client_id']).'" AND `status` <> "HIDE" ORDER BY `sort`';    
             
             $contacts = $this->db->readSqlList($sql);    
             if($contacts == 0) $error .= 'No contacts found for contract client ID['.$contract['client_id'].']';

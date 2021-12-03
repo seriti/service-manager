@@ -41,7 +41,7 @@ $date_param['class'] = 'form-control edit_input bootstrap_date';
     <div class="col-sm-3">Division:</div>
     <div class="col-sm-3">
     <?php 
-    $sql = 'SELECT division_id, name FROM '.TABLE_PREFIX.'division WHERE status <> "HIDE" ORDER BY sort';
+    $sql = 'SELECT `division_id`, `name` FROM `'.TABLE_PREFIX.'division` WHERE `status` <> "HIDE" ORDER BY `sort`';
     echo Form::sqlList($sql,$db,'division_id',$form['division_id'],$list_param) 
     ?>
     </div>
@@ -61,7 +61,7 @@ $date_param['class'] = 'form-control edit_input bootstrap_date';
     <div class="col-sm-3">Service round:</div>
     <div class="col-sm-3">
     <?php 
-    $sql = 'SELECT round_id, name FROM '.TABLE_PREFIX.'service_round WHERE status <> "HIDE" ORDER BY sort';
+    $sql = 'SELECT `round_id`, `name` FROM `'.TABLE_PREFIX.'service_round` WHERE `status` <> "HIDE" ORDER BY `sort`';
     echo Form::sqlList($sql,$db,'round_id',$form['round_id'],$list_param) 
     ?>
     </div>

@@ -3,7 +3,7 @@ use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 use Seriti\Tools\Date;
 
-$sql = 'SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort';
+$sql = 'SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'visit_category` ORDER BY `sort`';
 $category = $this->db->readSqlList($sql);
 
 ?>

@@ -44,7 +44,7 @@ $visit_days = $data['visit_days'];
         $name_assist = 'assist_'.$id;
         $name_notes = 'notes_'.$id;
 
-        $sql_cat = 'SELECT category_id, name FROM '.TABLE_PREFIX.'visit_category ORDER BY sort';
+        $sql_cat = 'SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'visit_category` ORDER BY `sort`';
 
         echo '<tr>'.
              '<td>'.$id.'</td>'.
