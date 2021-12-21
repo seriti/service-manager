@@ -201,6 +201,9 @@ class SetupData extends SetupModuledata
                               `contract_id` int(11) NOT NULL,
                               `round_id` int(11) NOT NULL,
                               `feedback_id` int(11) NOT NULL,
+                              `feedback_list` VARCHAR(250) NOT NULL,
+                              `feedback_notes` text NOT NULL,
+                              `feedback_status` VARCHAR(64) NOT NULL,
                               `no_assistants` int(11) NOT NULL,
                               `user_id_tech` int(11) NOT NULL,
                               `user_id_booked` int(11) NOT NULL,
@@ -390,9 +393,13 @@ class SetupData extends SetupModuledata
         //initialisation
         //$this->addInitialSql('INSERT INTO `TABLE_PREFIXprovider` (name,email,status,contact_name) '.
         //                     'VALUES("My first provider","bob@provider.com","OK","bob")');
-        
 
         //updates use time stamp in ['YYYY-MM-DD HH:MM'] format, must be unique and sequential
-        //$this->addUpdateSql('YYYY-MM-DD HH:MM','Update TABLE_PREFIX--- SET --- "X"');
+        
+        $this->addUpdateSql('2021-11-17 12:00','ALTER TABLE `srv_contract_visit` ADD COLUMN `feedback_notes` TEXT NOT NULL AFTER `user_id_tech`, ADD COLUMN `feedback_status` VARCHAR(64) NOT NULL AFTER `feedback_notes`');
+
+        $this->addUpdateSql('2021-12-07 12:00','ALTER TABLE `srv_contract_visit` ADD COLUMN `feedback_list` VARCHAR(250) NOT NULL AFTER `feedback_notes`');
+
+
     }
 }

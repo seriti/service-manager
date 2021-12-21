@@ -3,20 +3,25 @@ namespace App\Service;
 
 use Seriti\Tools\Table;
 //use Seriti\Tools\Date;
-//use Seriti\Tools\Form;
-//use Seriti\Tools\Secure;
+use Seriti\Tools\Form;
+use Seriti\Tools\Secure;
 
 use App\Service\Helpers;
 
 class ServiceVisit extends Table
 {
+    protected $feedback_list = [];
+
     public function setup($param = []) 
     {
         $param = ['row_name'=>'Contract visit','col_label'=>'contract_id'];
         parent::setup($param);
 
+        $sql = 'SELECT `feedback_id`, `name` FROM `'.TABLE_PREFIX.'service_feedback` ORDER BY `type_id`, `sort`';
+        $this->feedback_list = $this->db->readSqlList($sql);
+
         $this->addTableCol(['id'=>'visit_id','type'=>'INTEGER','title'=>'Visit ID','key'=>true,'key_auto'=>true]);
-        $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
+        $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Visit Status']);
 
         $this->addTableCol(['id'=>'contract_id','type'=>'INTEGER','title'=>'Contract','edit_title'=>'Contract ID']);
         $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category',
@@ -36,8 +41,10 @@ class ServiceVisit extends Table
         $this->addTableCol(['id'=>'time_to','type'=>'TIME','title'=>'Time to','required'=>true]);
         $this->addTableCol(['id'=>'no_assistants','type'=>'INTEGER','title'=>'No. assistants']);
         
-        $this->addTableCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback',
-                            'join'=>'`name` FROM `'.TABLE_PREFIX.'service_feedback` WHERE `feedback_id`']);
+        //$this->addTableCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'`name` FROM `'.TABLE_PREFIX.'service_feedback` WHERE `feedback_id`']);
+        $this->addTableCol(['id'=>'feedback_list','type'=>'CUSTOM','title'=>'Feedback','required'=>false]);
+        $this->addTableCol(['id'=>'feedback_notes','type'=>'TEXT','title'=>'Feedback Notes','required'=>false]);
+        $this->addTableCol(['id'=>'feedback_status','type'=>'STRING','title'=>'Feedback Status','required'=>false]);
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false,'list'=>true]);
 
         //$this->addSql('WHERE','T.status <> "NEW" AND T.status <> "CONFIRMED" ');
@@ -51,20 +58,21 @@ class ServiceVisit extends Table
         $this->addAction(['type'=>'popup','text'=>'User&nbsp;assist','url'=>'visit_user_assist','mode'=>'view','width'=>600,'height'=>600]);
         $this->addAction(['type'=>'popup','text'=>'Service&nbsp;items','url'=>'visit_item','mode'=>'view','width'=>600,'height'=>600]);
 
-        $this->addSearch(['visit_id','status','contract_id','category_id','round_id','user_id_tech','no_assistants','date_visit','feedback_id','notes'],['rows'=>3]);
+        $this->addSearch(['visit_id','status','contract_id','category_id','round_id','user_id_tech','no_assistants','date_visit',
+                          'feedback_notes','feedback_status','notes'],['rows'=>4]);
         $this->addSearchXtra('C.client_code','Contract code');
         $this->addSearchXtra('C.division_id','Division');
         $this->addSearchXtra('CL.name','Client name');
 
-        //$this->addSelect('contract_id','SELECT `contract_id`,`client_code` FROM `'.TABLE_PREFIX.'contract` ORDER BY `client_code`');
+        //$this->addSelect('contract_id','SELECT `contract_id`,`client_code` FROM `'.TABLE_PREFIX.'contract` WHERE `status` <> "HIDE" ORDER BY `client_code`');
         $this->addSelect('category_id','SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'visit_category` ORDER BY `sort`');
         $this->addSelect('round_id','SELECT `round_id`, `name` FROM `'.TABLE_PREFIX.'service_round` ORDER BY `sort`');
-        $this->addSelect('feedback_id','SELECT `feedback_id`, `name` FROM `'.TABLE_PREFIX.'service_feedback` ORDER BY `type_id`, `sort`');
+        //$this->addSelect('feedback_id','SELECT `feedback_id`, `name` FROM `'.TABLE_PREFIX.'service_feedback` ORDER BY `type_id`, `sort`');
         $this->addSelect('C.division_id','SELECT `division_id`, `name` FROM `'.TABLE_PREFIX.'division` ORDER BY `sort`');
         
         //$status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRM booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
-        $status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRMED booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
-        $this->addSelect('status',['list'=>$status,'list_assoc'=>true]);
+        $this->addSelect('status',['list'=>VISIT_STATUS,'list_assoc'=>true]);
+        $this->addSelect('feedback_status',['list'=>FEEDBACK_STATUS,'list_assoc'=>true]);
         $this->addSelect('user_id_tech','SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`');
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'VST','max_no'=>100,
@@ -93,9 +101,66 @@ class ServiceVisit extends Table
                      'Code:<b>'.$rec['contract']['client_code'].'</b><br/>'.
                      $rec['contract']['type_id'];
         }
+
+        if($col_id === 'feedback_list') {
+            $value_arr = explode(',',$value);
+            $html = '';
+            foreach($value_arr as $feedback_id) {
+               $html .= $this->feedback_list[$feedback_id].'<br/>'; 
+            }
+            $value = $html;
+        }
         
     }
-    //protected function beforeUpdate($id,$context,&$data,&$error) {}
+
+    protected function customEditValue($col_id,$value,$edit_type,$form) 
+    {
+        $html = '';
+
+        if($col_id === 'feedback_list') {   
+            $value_arr = explode(',',$value);
+
+            if($this->feedback_list !== 0) {
+                
+                //check for changes
+                foreach($this->feedback_list as $feedback_id => $name) {
+                    $form_id = 'feedback_'.$feedback_id;
+
+                    //need to account for situation where form errors and redisplay checks
+                    if(count($form)) {
+                        if(isset($_POST[$form_id])) $checked = true; else $checked = false;
+                    } else {
+                        if(in_array($feedback_id,$value_arr)) $checked = true; else $checked = false;
+                    }    
+
+                    $html .= '<li>'.Form::checkBox($form_id,true,$checked).' '.$name.'</li>';
+                }
+
+                if(count($this->feedback_list) > 5) $style = 'style="overflow: auto; height:100px;"'; else $style = '';
+                $html = '<div '.$style.'>'.$html.'</div>';
+
+            }
+        }    
+
+        return $html;
+    }
+
+    protected function beforeUpdate($id,$context,&$data,&$error) 
+    {
+        $value_arr = [];
+
+        foreach($this->feedback_list as $feedback_id => $name) {
+            $form_id = 'feedback_'.$feedback_id;
+            if(isset($_POST[$form_id])) $value_arr[] = $feedback_id;
+        }
+
+        if(count($value_arr)) {
+            $data['feedback_list'] = implode(',',$value_arr);
+        } else {
+            $data['feedback_list'] = '';
+        }    
+
+    }
     //protected function afterUpdate($id,$context,$data) {}
     //protected function beforeDelete($id,&$error) {}
     //protected function afterDelete($id) {}

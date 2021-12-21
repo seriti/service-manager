@@ -47,6 +47,22 @@ class InvoicePdf extends Pdf
         $row_h = 6;
         $info_h = 5; //6
 
+        //Image($file, $x=null, $y=null, $w=0, $h=0, $type='', $link='')
+        $image_w = 0;
+        $image_h = 0;
+        if(!isset($this->bg_image[5]) or $this->bg_image[5] !== 'YES') {
+            //custom logo setup for pdf
+            $custom_w = $this->bg_image[3];
+            $custom_h = $this->bg_image[4];
+            //modify to fit
+            $image_x = $this->invoice_margin + 1;
+            $image_y = $this->invoice_margin + 1;
+            $image_h = $title_h + 2;
+            $image_w = ($custom_w / $custom_h) * $image_h;
+
+            $this->Image($this->bg_image[0],$image_x,$image_y,$image_w,$image_h);
+        } 
+
         //top left, business details
         $pos_x = $this->invoice_margin;
         $pos_y = $this->invoice_margin;
@@ -76,7 +92,7 @@ class InvoicePdf extends Pdf
         $shift_x = $this->block_margin;
         $this->SetY($this->invoice_margin + $this->block_margin);
         $this->changeFont('H2');
-        $this->Cell($shift_x);
+        $this->Cell($shift_x + $image_w);
         $this->Cell(0,$title_h,$this->text_element['business_title'],0,0,'L',0);
         $this->Ln($title_h);
         $this->changeFont('TEXT');

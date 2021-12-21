@@ -131,9 +131,8 @@ class Contract extends Table
                   
         $this->addSearch($search,['rows'=>$search_rows]);
                 
-        $this->addSelect('client_id','SELECT `client_id`, `name` FROM `'.TABLE_PREFIX.'client` ORDER BY `name`');
+        $this->addSelect('client_id','SELECT `client_id`, `name` FROM `'.TABLE_PREFIX.'client` WHERE `status` <> "HIDE" ORDER BY `name`');
         $this->addSelect('division_id','SELECT `division_id`, `name` FROM `'.TABLE_PREFIX.'division` ORDER BY `sort`');
-        $this->addSelect('client_id','SELECT `client_id`, `name` FROM `'.TABLE_PREFIX.'client` ORDER BY `name`');
         //$this->addSelect('location_id','SELECT `location_id`, `name` FROM `'.TABLE_PREFIX.'client_location` ORDER BY `sort`');
         $this->addSelect('location_id','SELECT "0","Unknown"'); //just a dummy for modification by onchange
         $this->addSelect('agent_id','SELECT `agent_id`, `name` FROM `'.TABLE_PREFIX.'agent` ORDER BY `sort`');

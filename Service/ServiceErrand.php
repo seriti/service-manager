@@ -32,7 +32,7 @@ class ServiceErrand extends Table
 
         $this->addSearch(['errand_id','client_id','location_id','category_id','round_id','date','time_arrive','time_leave','notes','status'],['rows'=>2]);
 
-        $this->addSelect('client_id','SELECT `client_id`, `name` FROM `'.TABLE_PREFIX.'client` ORDER BY `name`');
+        $this->addSelect('client_id','SELECT `client_id`, `name` FROM `'.TABLE_PREFIX.'client` WHERE `status` <> "HIDE" ORDER BY `name`');
         $this->addSelect('location_id','SELECT `location_id`, `name` FROM `'.TABLE_PREFIX.'location` ORDER BY `name`');
         $this->addSelect('category_id','SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'category` ORDER BY `name`');
         $this->addSelect('round_id','SELECT `round_id`, `name` FROM `'.TABLE_PREFIX.'round` ORDER BY `name`');

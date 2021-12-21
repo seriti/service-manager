@@ -43,6 +43,13 @@ class Config
                                 'last_visit_info'=>true,'last_visit_notes'=>false,'tax_inclusive'=>false]);
         //interval defined in minutes
         define('DIARY_SETUP',['from_time'=>'06:00','to_time'=>'20:00','interval'=>15,'days'=>7]);
+
+        define('VISIT_STATUS',['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRMED booking',
+                               'COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit',
+                               'INVOICED'=>'Invoiced visit']);
+
+        define('FEEDBACK_STATUS',['NONE'=>'No feedback required','REQUIRED'=>'Feedback required',
+                                  'COMPLETED'=>'Feedback completed']);
                 
         $setup_pages = ['division','account_code','client_category','location_category','agent','visit_category','errand_category','service_feedback',
                         'service_day','service_round','item_units','service_price','pay_method'];

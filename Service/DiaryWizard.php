@@ -106,7 +106,8 @@ class DiaryWizard extends Wizard
                           'C.`visit_time_to`,C.`time_estimate`,C.`date_start`,C.`no_assistants`,C.`notes_admin`, '.
                           '(SELECT V.`date_visit` FROM `'.$table_visit.'` AS V WHERE V.`contract_id` = C.`contract_id` ORDER BY V.`date_visit` DESC LIMIT 1) AS date_last_visit '.
                    'FROM `'.$table_contract.'` AS C LEFT JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
-                   'WHERE C.`division_id` = "'.$this->db->escapeSql($division_id).'" AND C.`round_id` = "'.$this->db->escapeSql($round_id).'" AND C.`type_id` = "'.$this->db->escapeSql($type_id).'" ';
+                   'WHERE C.`division_id` = "'.$this->db->escapeSql($division_id).'" AND C.`status` <> "HIDE" AND '.
+                         'C.`round_id` = "'.$this->db->escapeSql($round_id).'" AND C.`type_id` = "'.$this->db->escapeSql($type_id).'" ';
             if($client_name !== '') $sql .= 'AND CL.`name` LIKE "%'.$this->db->escapeSql($client_name).'%" ';     
             if($client_code !== '') $sql .= 'AND C.`client_code` LIKE "%'.$this->db->escapeSql($client_code).'%" '; 
             if(!$ignore_date_visit) $sql .= 'HAVING (date_last_visit IS NULL OR date_last_visit < "'.$this->db->escapeSql($date_last_visit).'") ';  

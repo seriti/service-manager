@@ -12,8 +12,8 @@ class Report extends ReportTool
     //NB: FEEDBACK only applies within reporting context
     protected $visit_status = ['ALL'=>'ALL entries','NEW'=>'Preliminary entries only','CONFIRMED'=>'Confirmed entries only',
                                'COMPLETED'=>'Completed visits only','FEEDBACK'=>'Visits with feedback only'];
-
-    protected $contract_status = ['ALL'=>'ALL contract statuses','NEW'=>'NEW contracts','OK'=>'OK contracts','HIDE'=>'Hidden contracts'];
+    //'HIDE'=>'Hidden contracts' are ignored automatically
+    protected $contract_status = ['ALL'=>'ALL active contracts','NEW'=>'NEW contracts','OK'=>'OK contracts'];
     protected $contract_type = ['ALL'=>'SINGLE Shot & REPEAT contracts','SINGLE'=>'SINGLE Shot contracts','REPEAT'=>'REPEAT contracts'];
 
     //configure
@@ -44,7 +44,8 @@ class Report extends ReportTool
         //$param = ['input'=>['select_division','select_format']];
         $this->addReport('WORK_DUE','Contract Services & Invoices due',$param); 
 
-        $param = ['input'=>['select_division','select_round','select_technician','select_date_period','select_visit_status','select_format']];
+        $param = ['input'=>['select_division','select_round','select_technician','select_date_period',
+                            'select_visit_status','select_feedback_status','select_format']];
         $this->addReport('VISIT_FEEDBACK','Contract visit feedback',$param); 
         
         
@@ -57,6 +58,7 @@ class Report extends ReportTool
         $this->addInput('select_technician','');
         $this->addInput('select_user','');
         $this->addInput('select_visit_status','');
+        $this->addInput('select_feedback_status','');
         $this->addInput('select_format',''); 
     }
 
@@ -142,9 +144,19 @@ class Report extends ReportTool
         if($id === 'select_visit_status') {
             $param = [];
             $param['class'] = 'form-control input-medium input-inline';
+            $param['xtra'] = ['ALL'=>'All visit status'];
             if(isset($form['visit_status'])) $visit_status = $form['visit_status']; else $visit_status = 'ALL';
             $key_assoc = true;
-            $html .= 'Visit Status:&nbsp;'.Form::arrayList($this->visit_status,'visit_status',$visit_status,$key_assoc,$param);
+            $html .= 'Visit Status:&nbsp;'.Form::arrayList(VISIT_STATUS,'visit_status',$visit_status,$key_assoc,$param);
+        } 
+
+        if($id === 'select_feedback_status') {
+            $param = [];
+            $param['class'] = 'form-control input-medium input-inline';
+            $param['xtra'] = ['ALL'=>'All feedback status'];
+            if(isset($form['feedback_status'])) $feedback_status = $form['feedback_status']; else $feedback_status = 'ALL';
+            $key_assoc = true;
+            $html .= 'Feedback Status:&nbsp;'.Form::arrayList(FEEDBACK_STATUS,'feedback_status',$feedback_status,$key_assoc,$param);
         }  
 
         if($id === 'select_contract_status') {
@@ -224,7 +236,7 @@ class Report extends ReportTool
         if($id === 'VISIT_FEEDBACK') {
             $options['user_id_tech'] = $form['user_id_tech'];
             $html = HelpersReport::visitFeedback($this->db,$form['division_id'],$form['round_id'],$form['visit_status'],
-                                                 $form['date_from'],$form['date_to'],$options,$error);
+                                                 $form['feedback_status'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);
         }
 

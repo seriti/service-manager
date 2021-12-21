@@ -27,7 +27,7 @@ use App\Service\Helpers;
 //static functions for service module
 class HelpersReport {
 
-    public static function visitFeedback($db,$division_id,$round_id,$status,$date_from,$date_to,$options = [],&$error)
+    public static function visitFeedback($db,$division_id,$round_id,$status,$feedback_status,$date_from,$date_to,$options = [],&$error)
     {
         $error = '';
 
@@ -73,6 +73,7 @@ class HelpersReport {
         $table_client = TABLE_PREFIX.'client';
         $table_user = TABLE_USER;
         $table_round = TABLE_PREFIX.'service_round';
+        //switched to multiple feedback select
         $table_feedback = TABLE_PREFIX.'service_feedback';
                 
         /*
@@ -81,27 +82,26 @@ class HelpersReport {
                       'C.client_code, C.client_id,CL.name AS client,R.name AS round
         */
 
+                      //F.`name` AS `feedback`
         $sql = 'SELECT CL.`name` AS `client`,U.`name` AS `technician`, '.
-                      'V.`date_visit`,V.`status`,F.`name` AS `feedback` '.
+                      'V.`date_visit`,V.`status`,V.`feedback_list` AS `feedback`,V.`feedback_status`,V.`feedback_notes` '.
                'FROM `'.$table_visit.'` AS V '.
                      'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
                      'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
                      'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
                      'LEFT JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
-                     'LEFT JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
+                     //'LEFT JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
                'WHERE V.`date_visit` >= "'.$db->escapeSql($date_from).'" AND V.`date_visit` <= "'.$db->escapeSql($date_to).'" ';
         if($division_id !== 'ALL') $sql .= 'AND C.`division_id` = "'.$db->escapeSql($division_id).'" ';    
         if($round_id !== 'ALL') $sql .= 'AND C.`round_id` = "'.$db->escapeSql($round_id).'" ';       
         if($options['user_id_tech'] != 'ALL') $sql .= 'AND V.`user_id_tech` = "'.$db->escapeSql($options['user_id_tech']).'" ';
-        if($status != 'ALL') {
-            if($status === 'FEEDBACK') {
-                $sql .= 'AND F.`name` IS NOT NULL ';
-            } else {
-                $sql .= 'AND V.`status` = "'.$db->escapeSql($status).'" ';    
-            }
-        }   
+        if($status != 'ALL') $sql .= 'AND V.`status` = "'.$db->escapeSql($status).'" ';
+        if($feedback_status != 'ALL') {
+            //$sql .= 'AND F.`name` IS NOT NULL ';
+            $sql .= 'AND V.`feedback_status` = "'.$db->escapeSql($feedback_status).'" ';    
+        }    
         
-        $sql .= 'ORDER BY V.`date_visit`, F.`sort` ';
+        $sql .= 'ORDER BY V.`date_visit` ';
 
         //$error .= $sql;
 
@@ -114,8 +114,8 @@ class HelpersReport {
 
             
 
-        $col_width = array(40,40,20,20,60);
-        $col_type = array('','','DATE','','');
+        $col_width = array(40,40,20,20,40,20,20);
+        $col_type = array('','','DATE','','','','');
 
         if($options['format'] === 'PDF') {
             $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
@@ -182,7 +182,7 @@ class HelpersReport {
         $ignore_date_visit = true;
 
         
-        $sql_where = 'C.`date_start` < "'.$db->escapeSql($date_to).'" ';
+        $sql_where = 'C.`status` <> "HIDE" AND C.`date_start` < "'.$db->escapeSql($date_to).'" ';
 
         if($options['type_id'] !== 'ALL') $sql_where .= 'AND C.`type_id` = "'.$db->escapeSql($options['type_id']).'" ';
 
@@ -593,7 +593,7 @@ class HelpersReport {
 
 
             $sql .= 'LEFT JOIN `'.$table_invoice.'` AS I ON(C.`contract_id` = I.`contract_id` AND I.`date` >= "'.$date_from.'" AND I.`date` <= "'.$date_to.'") '.
-                    'WHERE I.`invoice_no` IS NULL '.$sql_where.
+                    'WHERE C.`status` <> "HIDE" AND I.`invoice_no` IS NULL '.$sql_where.
                     'ORDER BY D.`name`, C.`date_signed` DESC ';
         }
 
@@ -605,7 +605,7 @@ class HelpersReport {
             $col_type=array('','','','','','DATE');
 
             $sql .= 'LEFT JOIN `'.$table_visit.'` AS V ON(C.`contract_id` = V.`contract_id` AND V.`date_visit` >= "'.$date_from.'" AND V.`date_visit` <= "'.$date_to.'") '.
-                    'WHERE V.`visit_id` IS NULL '.$sql_where.
+                    'WHERE C.`status` <> "HIDE" AND V.`visit_id` IS NULL '.$sql_where.
                     'ORDER BY D.`name`, C.`date_signed` DESC ';
         }
 
@@ -883,7 +883,9 @@ class HelpersReport {
         
         //NB: C.client_code is Contract/order no NOT client additional CL.client_code
         $sql = 'SELECT I.`invoice_id`,I.`invoice_no`,I.`date`,I.`subtotal`,I.`discount`,I.`tax`,I.`total`,I.`status`,I.`contract_id`, '.
-                      'C.`client_code` AS `contract_code`,CL.`name` AS `client`,CL.`account_code`,L.`address` AS `location_address` '.
+                      'C.`client_code` AS `contract_code`,CL.`name` AS `client`,CL.`account_code`,L.`address` AS `location_address`, '.
+                      '(SELECT GROUP_CONCAT(CONCAT(II.`item_code`,":",II.`item_desc`)) FROM `'.$table_invoice_item.'` AS II '.
+                       'WHERE II.`invoice_id` = I.`invoice_id` GROUP BY II.`invoice_id`) AS `invoice_items` '.
                'FROM `'.$table_invoice.'` AS I JOIN `'.$table_contract.'` AS C ON(I.`contract_id` = C.`contract_id`) '.
                      'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
                      'JOIN `'.$table_location.'` AS L ON(C.`location_id` = L.`location_id`) '.
@@ -898,8 +900,8 @@ class HelpersReport {
         } 
             
 
-        $col_width = array(10,10,20,20,20,20,20,20,20,20,20,20,20);
-        $col_type = array('','','','DBL2','DBL2','DBL2','DBL2','','','','','','');
+        $col_width = array(10,10,20,20,20,20,20,20,20,20,20,20,20,20);
+        $col_type = array('','','','DBL2','DBL2','DBL2','DBL2','','','','','','','');
 
         if($options['format'] === 'PDF') {
             $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';

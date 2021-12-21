@@ -58,7 +58,7 @@ class Invoice extends Table
         $this->addSearchXtra('C.client_code','Contract code');
         $this->addSearchXtra('C.division_id','Division');
 
-        //$this->addSelect('contract_id','SELECT `contract_id`,`client_code` FROM `'.TABLE_PREFIX.'contract` ORDER BY `client_code`');
+        //$this->addSelect('contract_id','SELECT `contract_id`,`client_code` FROM `'.TABLE_PREFIX.'contract` WHERE `status` <> "HIDE" ORDER BY `client_code`');
         //$this->addSelect('contact_id','SELECT `contact_id`, `name` FROM `'.TABLE_PREFIX.'client_contact` ORDER BY `name`');
               
         

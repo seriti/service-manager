@@ -848,11 +848,12 @@ class Helpers {
         }
         
         if($param['get'] === 'ALL' or $param['get'] === 'VISITS') {
+            //V.`feedback_id`,F.`name` AS `feedback`,F.`type_id` AS `feedback_type`
             $sql = 'SELECT V.`visit_id`,V.`category_id`,C.`name` AS `category`,V.`round_id`,R.`name` AS `round`,V.`no_assistants`,V.`service_no`,V.`invoice_no`, '.
-                          'V.`date_booked`,V.`date_visit`,V.`notes`,V.`feedback_id`,F.`name` AS `feedback`,F.`type_id` AS `feedback_type` '.
+                          'V.`date_booked`,V.`date_visit`,V.`notes`,V.`feedback_list` AS `feedback` '.
                     'FROM `'.$table_visit.'` AS V JOIN `'.$table_visit_category.'` AS C ON(V.`category_id` = C.`category_id`) '.
                           'JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
-                          'JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
+                          //'JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
                     'WHERE V.`contract_id` = "'.$db->escapeSql($contract_id).'" ';
             $output['visits'] = $db->readSqlArray($sql);
         }
