@@ -28,6 +28,7 @@ class ContractVisit extends Table
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Visit Status']);
         $this->addTableCol(['id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'`name` FROM `'.TABLE_PREFIX.'visit_category` WHERE `category_id`']);
         $this->addTableCol(['id'=>'round_id','type'=>'INTEGER','title'=>'Service round','join'=>'`name` FROM `'.TABLE_PREFIX.'service_round` WHERE `round_id`']);
+        $this->addTableCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no','required'=>false]);
         $this->addTableCol(['id'=>'no_assistants','type'=>'INTEGER','title'=>'No assistants']);
         $this->addTableCol(['id'=>'date_booked','type'=>'DATETIME','title'=>'Date booked']);
         $this->addTableCol(['id'=>'date_visit','type'=>'DATETIME','title'=>'Date visit']);
@@ -36,8 +37,10 @@ class ContractVisit extends Table
         //$this->addTableCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'`name` FROM `'.TABLE_PREFIX.'service_feedback` WHERE `feedback_id`']);
         $this->addTableCol(['id'=>'feedback_list','type'=>'CUSTOM','title'=>'Feedback','required'=>false]);
         $this->addTableCol(['id'=>'feedback_notes','type'=>'TEXT','title'=>'Feedback Notes','required'=>false]);
+        $this->addTableCol(['id'=>'feedback_user_id','type'=>'INTEGER','title'=>'Feedback User',
+                            'join'=>'`'.$this->user_cols['name'].'` FROM `'.TABLE_USER.'` WHERE `'.$this->user_cols['id'].'`']);
         $this->addTableCol(['id'=>'feedback_status','type'=>'STRING','title'=>'Feedback Status','required'=>false]);
-        $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false]);
+        $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Invoice Notes','required'=>false]);
         
 
 
@@ -54,6 +57,9 @@ class ContractVisit extends Table
         //$this->addSelect('feedback_id','SELECT `feedback_id`, `name` FROM `'.TABLE_PREFIX.'service_feedback` ORDER BY `sort`');
         $this->addSelect('status',['list'=>VISIT_STATUS,'list_assoc'=>true]);
         $this->addSelect('feedback_status',['list'=>FEEDBACK_STATUS,'list_assoc'=>true]);
+
+        //$sql = 'SELECT '.$this->user_cols['id'].','.$this->user_cols['name'].' FROM '.TABLE_USER.' ORDER BY '.$this->user_cols['name'];
+        //$this->addSelect('feedback_user_id',$sql);
     }
 
     protected function modifyRowValue($col_id,$data,&$value)

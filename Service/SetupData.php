@@ -204,6 +204,7 @@ class SetupData extends SetupModuledata
                               `feedback_list` VARCHAR(250) NOT NULL,
                               `feedback_notes` text NOT NULL,
                               `feedback_status` VARCHAR(64) NOT NULL,
+                              `feedback_user_id` int(11) NOT NULL,
                               `no_assistants` int(11) NOT NULL,
                               `user_id_tech` int(11) NOT NULL,
                               `user_id_booked` int(11) NOT NULL,

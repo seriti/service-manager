@@ -5,12 +5,14 @@ use Seriti\Tools\Table;
 //use Seriti\Tools\Date;
 use Seriti\Tools\Form;
 use Seriti\Tools\Secure;
+use Seriti\Tools\Audit;
 
 use App\Service\Helpers;
 
 class ServiceVisit extends Table
 {
     protected $feedback_list = [];
+
 
     public function setup($param = []) 
     {
@@ -44,8 +46,11 @@ class ServiceVisit extends Table
         //$this->addTableCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'`name` FROM `'.TABLE_PREFIX.'service_feedback` WHERE `feedback_id`']);
         $this->addTableCol(['id'=>'feedback_list','type'=>'CUSTOM','title'=>'Feedback','required'=>false]);
         $this->addTableCol(['id'=>'feedback_notes','type'=>'TEXT','title'=>'Feedback Notes','required'=>false]);
+        $this->addTableCol(['id'=>'feedback_user_id','type'=>'INTEGER','title'=>'Feedback User','required'=>false,
+                            'join'=>'`name` FROM `'.TABLE_USER.'` WHERE `user_id`']);
         $this->addTableCol(['id'=>'feedback_status','type'=>'STRING','title'=>'Feedback Status','required'=>false]);
-        $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false,'list'=>true]);
+        
+        $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Invoice Notes','required'=>false,'list'=>true]);
 
         //$this->addSql('WHERE','T.status <> "NEW" AND T.status <> "CONFIRMED" ');
         $this->addSql('JOIN','LEFT JOIN `'.TABLE_PREFIX.'contract` AS C ON(T.`contract_id` = C.`contract_id`)');
@@ -53,13 +58,15 @@ class ServiceVisit extends Table
                
         $this->addSortOrder('T.`visit_id` DESC','Most recent first','DEFAULT');
 
+
+        $this->addAction(['type'=>'check_box','text'=>'']);
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
         $this->addAction(['type'=>'popup','text'=>'User&nbsp;assist','url'=>'visit_user_assist','mode'=>'view','width'=>600,'height'=>600]);
         $this->addAction(['type'=>'popup','text'=>'Service&nbsp;items','url'=>'visit_item','mode'=>'view','width'=>600,'height'=>600]);
 
-        $this->addSearch(['visit_id','status','contract_id','category_id','round_id','user_id_tech','no_assistants','date_visit',
-                          'feedback_notes','feedback_status','notes'],['rows'=>4]);
+        $this->addSearch(['visit_id','status','contract_id','category_id','round_id','service_no','user_id_tech','no_assistants','date_visit',
+                          'feedback_notes','feedback_user_id','feedback_status','notes'],['rows'=>4]);
         $this->addSearchXtra('C.client_code','Contract code');
         $this->addSearchXtra('C.division_id','Division');
         $this->addSearchXtra('CL.name','Client name');
@@ -73,7 +80,10 @@ class ServiceVisit extends Table
         //$status = ['NEW'=>'Preliminary booking','CONFIRMED'=>'CONFIRM booking','COMPLETED'=>'Completed visit','INCOMPLETE'=>'NOT Completed visit','INVOICED'=>'Invoiced visit'];
         $this->addSelect('status',['list'=>VISIT_STATUS,'list_assoc'=>true]);
         $this->addSelect('feedback_status',['list'=>FEEDBACK_STATUS,'list_assoc'=>true]);
-        $this->addSelect('user_id_tech','SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`');
+        $this->addSelect('user_id_tech',['sql'=>'SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`',
+                                         'xtra'=>[0=>'No Linked user']]);
+        $this->addSelect('feedback_user_id',['sql'=>'SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`',
+                                             'xtra'=>[0=>'No Linked user']]);
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'VST','max_no'=>100,
                            'icon'=>'<span class="glyphicon glyphicon-file" aria-hidden="true"></span>&nbsp;manage',
@@ -160,6 +170,113 @@ class ServiceVisit extends Table
             $data['feedback_list'] = '';
         }    
 
+    }
+
+    protected function viewTableActions() {
+        $html = '';
+        $list = array();
+            
+        $status_set = 'NEW';
+        $date_set = date('Y-m-d');
+        
+        if(!$this->access['read_only']) {
+            $list['SELECT'] = 'Action for selected '.$this->row_name_plural;
+            $list['STATUS_CHANGE'] = 'Change Visit Status.';
+        }  
+        
+        if(count($list) != 0){
+            $html .= '<span style="padding:8px;"><input type="checkbox" id="checkbox_all"></span> ';
+            $param['class'] = 'form-control input-medium input-inline';
+            $param['onchange'] = 'javascript:change_table_action()';
+            $action_id = '';
+            $status_change = 'NONE';
+            $email_address = '';
+            
+            $html .= Form::arrayList($list,'table_action',$action_id,true,$param);
+            
+            //javascript to show collection list depending on selecetion      
+            $html .= '<script type="text/javascript">'.
+                     '$("#checkbox_all").click(function () {$(".checkbox_action").prop(\'checked\', $(this).prop(\'checked\'));});'.
+                     'function change_table_action() {'.
+                     'var table_action = document.getElementById(\'table_action\');'.
+                     'var action = table_action.options[table_action.selectedIndex].value; '.
+                     'var status_select = document.getElementById(\'status_select\');'.
+                     'status_select.style.display = \'none\'; '.
+                     'if(action==\'STATUS_CHANGE\') status_select.style.display = \'inline\';'.
+                     '}'.
+                     '</script>';
+            
+            $param = array();
+            $param['class'] = 'form-control input-small input-inline';
+            //$param['class']='form-control col-sm-3';
+            $html .= '<span id="status_select" style="display:none"> status&raquo;'.
+                     Form::arrayList(VISIT_STATUS,'status_change',$status_change,true,$param).
+                     '</span>'; 
+                        
+                    
+            $html .= '&nbsp;<input type="submit" name="action_submit" value="Apply action to selected '.
+                     $this->row_name_plural.'" class="btn btn-primary">';
+        }  
+        
+        return $html; 
+    }
+  
+    //update multiple records based on selected action
+    protected function updateTable() {
+        $error_str = '';
+        $error_tmp = '';
+        $message_str = '';
+        $audit_str = '';
+        $audit_count = 0;
+        $html = '';
+            
+        $action = Secure::clean('basic',$_POST['table_action']);
+        if($action === 'SELECT') {
+            $this->addError('You have not selected any action to perform on '.$this->row_name_plural.'!');
+        } else {
+            if($action === 'STATUS_CHANGE') {
+                $status_change = Secure::clean('alpha',$_POST['status_change']);
+                $audit_str = 'Status change['.$status_change.'] ';
+                if($status_change === 'NONE') $this->addError('You have not selected a valid status['.$status_change.']!');
+            }
+            
+            if(!$this->errors_found) {     
+                foreach($_POST as $key => $value) {
+                    if(substr($key,0,8) === 'checked_') {
+                        $visit_id = substr($key,8);
+                        $audit_str .= 'Visit ID['.$visit_id.'] ';
+                                            
+                        if($action === 'STATUS_CHANGE') {
+                            $sql = 'UPDATE `'.$this->table.'` SET `status` = "'.$this->db->escapeSql($status_change).'" '.
+                                   'WHERE `visit_id` = "'.$this->db->escapeSql($visit_id).'" ';
+                            $this->db->executeSql($sql,$error_tmp);
+                            if($error_tmp === '') {
+                                $message_str = 'Status set['.$status_change.'] for Visit ID['.$visit_id.'] ';
+                                $audit_str .= ' success!';
+                                $audit_count++;
+                                
+                                $this->addMessage($message_str);                
+                            } else {
+                                $this->addError('Could not update status for Visit['.$visit_id.']: '.$error_tmp);                
+                            }  
+                        }
+                        
+                    }   
+                }  
+              
+            }  
+        }  
+        
+        //audit any updates except for deletes as these are already audited 
+        if($audit_count != 0 and $action != 'DELETE') {
+            $audit_action = $action.'_'.strtoupper($this->table);
+            Audit::action($this->db,$this->user_id,$audit_action,$audit_str);
+        }  
+            
+        $this->mode = 'list';
+        $html .= $this->viewTable();
+            
+        return $html;
     }
     //protected function afterUpdate($id,$context,$data) {}
     //protected function beforeDelete($id,&$error) {}

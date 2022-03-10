@@ -71,6 +71,7 @@ class HelpersReport {
         $table_visit = TABLE_PREFIX.'contract_visit';
         $table_contract = TABLE_PREFIX.'contract';
         $table_client = TABLE_PREFIX.'client';
+        $table_location = TABLE_PREFIX.'client_location';
         $table_user = TABLE_USER;
         $table_round = TABLE_PREFIX.'service_round';
         //switched to multiple feedback select
@@ -83,11 +84,12 @@ class HelpersReport {
         */
 
                       //F.`name` AS `feedback`
-        $sql = 'SELECT CL.`name` AS `client`,U.`name` AS `technician`, '.
+        $sql = 'SELECT CL.`name` AS `client`,L.`address`,C.`client_code` AS `contract_code`,U.`name` AS `technician`, '.
                       'V.`date_visit`,V.`status`,V.`feedback_list` AS `feedback`,V.`feedback_status`,V.`feedback_notes` '.
                'FROM `'.$table_visit.'` AS V '.
                      'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
                      'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
+                     'JOIN `'.$table_location.'` AS L ON(C.`location_id` = L.`location_id`) '.
                      'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
                      'LEFT JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
                      //'LEFT JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
@@ -114,8 +116,8 @@ class HelpersReport {
 
             
 
-        $col_width = array(40,40,20,20,40,20,20);
-        $col_type = array('','','DATE','','','','');
+        $col_width = array(30,30,20,20,20,20,20,20,20);
+        $col_type = array('','','','','DATE','','','','');
 
         if($options['format'] === 'PDF') {
             $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
@@ -166,6 +168,7 @@ class HelpersReport {
         return $html;
     }
     
+    //cutrrently ony used for work due report
     public static function workPlanning($db,$mode,$division_id,$date_from,$date_to,$options,&$error)
     {
         $error = '';
@@ -178,8 +181,8 @@ class HelpersReport {
         if(!isset($options['status'])) $options['status'] = 'ALL';
         if(!isset($options['type_id'])) $options['type_id'] = 'ALL';
         
-        $date_last_visit = $date_form;
-        $ignore_date_visit = true;
+        //use date_last_visit to deterine contracts due a visit
+        $search_date_visit = true;
 
         
         $sql_where = 'C.`status` <> "HIDE" AND C.`date_start` < "'.$db->escapeSql($date_to).'" ';
@@ -218,7 +221,7 @@ class HelpersReport {
              
         
         $sql = 'SELECT C.`contract_id`,C.`type_id`,C.`client_code`,CL.`name` AS `client`,C.`date_start`,C.`no_assistants`,C.`notes_admin`, '.
-                      'R.`name` AS `round`, C.`price_visit`,C.`price_audit`,C.`no_visits`, '.
+                      'R.`name` AS `round`, C.`price_visit`,C.`price_audit`,C.`no_visits`, C.`no_months`, '.
                       '(SELECT COUNT(*) FROM `'.$table_visit.'` AS V WHERE V.`contract_id` = C.`contract_id` AND V.`status` IN("COMPLETED","INVOICED")) AS `visit_count`,  '.
                       '(SELECT COUNT(*) FROM `'.$table_invoice.'` AS I WHERE I.`contract_id` = C.`contract_id`) AS invoice_count,  '.
                       '(SELECT V.`date_visit` FROM `'.$table_visit.'` AS V WHERE V.`contract_id` = C.`contract_id` AND V.`status` IN("COMPLETED","INVOICED") ORDER BY V.`date_visit` DESC LIMIT 1) AS `date_last_visit`, '.
@@ -226,7 +229,9 @@ class HelpersReport {
                'FROM `'.$table_contract.'` AS C LEFT JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
                      'LEFT JOIN `'.$table_round.'` AS R ON (C.`round_id` = R.`round_id`) '.
                'WHERE '.$sql_where;
-        if(!$ignore_date_visit) $sql .= 'HAVING (`date_last_visit` IS NULL OR `date_last_visit` < "'.$db->escapeSql($date_last_visit).'") ';  
+        if($search_date_visit) {
+            $sql .= 'HAVING (`date_last_visit` IS NULL OR `date_last_visit` < "'.$db->escapeSql($date_from).'") ';  
+        }
         $sql .= 'ORDER BY R.`name`, C.`date_start` ';
 
 
@@ -241,32 +246,94 @@ class HelpersReport {
         $page_title = $division['name'].' work due from '.Date::formatDate($date_from).' to '.Date::formatDate($date_to);
         
         //block table parameters
-        $col_width=array(50,30,20,10,20,20,10,20,10);
-        $col_type=array('','','','','','DATE','','DATE','');
+        $col_width=array(50,30,20,10,20,20,20,10,20,10);
+        $col_type=array('','','','','','DATE','DATE','','DATE','');
 
         $data = [];
         $r = 0;
         $data[0][$r] = 'Client';
         $data[1][$r] = 'Contract code';
         $data[2][$r] = 'Round';
-        $data[3][$r] = 'Contract visits';
+        $data[3][$r] = 'Visit frequency';
         $data[4][$r] = 'Price/visit';
         $data[5][$r] = 'Last visit';
-        $data[6][$r] = 'Visits done';
-        $data[7][$r] = 'Last Invoice';
-        $data[8][$r] = 'Invoices issued';
+        $data[6][$r] = 'Next visit';
+        $data[7][$r] = 'Visits done';
+        $data[8][$r] = 'Last Invoice';
+        $data[9][$r] = 'Invoices issued';
                 
         foreach($contracts as $contract) {
-            $r ++;
-            $data[0][$r] = $contract['client'];
-            $data[1][$r] = $contract['client_code'];
-            $data[2][$r] = $contract['round'];
-            $data[3][$r] = $contract['no_visits'];
-            $data[4][$r] = $contract['price_visit'];
-            $data[5][$r] = $contract['date_last_visit'];
-            $data[6][$r] = $contract['visit_count'];
-            $data[7][$r] = $contract['date_last_invoice'];
-            $data[8][$r] = $contract['invoice_count'];
+            //calc visit frequency and next visit date
+            $due = false;
+            if($contract['type_id'] === 'SINGLE'){
+                $frequency_str = '1-Single';
+                $date_next = $contract['date_start'];
+            } else {
+                $add_days = 0;
+                $add_months = 0;
+
+                if($contract['no_months'] == 0 or $contract['no_visits']  == 0) {
+                    $frequency_str = 'Unknown';
+                    $add_months = 1;
+                } else {
+                    $visits_frequency = round(($contract['no_visits'] / $contract['no_months']),2);
+                    if($visits_frequency >= 1) {
+                        $frequency_str = $visits_frequency.' per month';
+                        if($visits_frequency == 1) {
+                            $add_months = 1;
+                        } else {
+                            $add_days = round(28/$visits_frequency);
+                            $due  = true;
+                        }
+                        
+                    } else {
+                        $add_months = round((1/$visits_frequency),1);
+                        $frequency_str = '1 per '.$add_months.' months';
+
+                        if(!is_int($add_months)) {
+                            $add_days = ($add_months - floor($add_months)) * 28;
+                            $add_months = floor($add_months);
+                        }
+
+                    }
+                }
+
+                //calculate if visit is due over date interval
+                if($contract['date_last_visit']) {
+                    $date_last = Date::mysqlGetDate($contract['date_last_visit']);
+                    $date_next = date('Y-m-d',mktime(0,0,0,$date_last['mon']+$add_months,$date_last['mday']+$add_days,$date_last['year']));
+                } else {
+                    //$date_last = Date::mysqlGetDate($contract['date_start']);
+                    //$date_next = date('Y-m-d',mktime(0,0,0,$date_last['mon']+$add_months,$date_last['mday']+$add_days,$date_last['year']));
+                    $date_next = $contract['date_start'];
+                    $due  = true;
+                }
+                
+            }
+
+            $display = Date::dateInRange($date_from,$date_to,$date_next);
+            if(!$display and $due) {
+                $now = getdate();
+                $next = Date::mysqlGetDate($date_next);
+                $date_next = date('Y-m-d',mktime(0,0,0,$now['mon'],$next['mday'],$now['year']));
+                $display = Date::dateInRange($date_from,$date_to,$date_next);
+            }
+
+            if($display) {
+                $r ++;
+                $data[0][$r] = $contract['client'];
+                $data[1][$r] = $contract['client_code'];
+                $data[2][$r] = $contract['round'];
+                
+                $data[3][$r] = $frequency_str;
+
+                $data[4][$r] = $contract['price_visit'];
+                $data[5][$r] = $contract['date_last_visit'];
+                $data[6][$r] = $date_next;
+                $data[7][$r] = $contract['visit_count'];
+                $data[8][$r] = $contract['date_last_invoice'];
+                $data[9][$r] = $contract['invoice_count'];
+            }
         }
         
         if($options['format'] === 'PDF') {
@@ -476,6 +543,10 @@ class HelpersReport {
                 $data[0][$r] = 'Visit notes:';
                 $data[1][$r] = $visit['notes'];
                 $data[2][$r] = '';
+
+                //rows + header rows
+                $space_limit = (($r + 5) * $row_h);
+                $pdf->checkForPageBreak($space_limit);
 
                 $pdf->changeFont('H1');
                 $pdf->Cell(20,$row_h,'Client :',0,0,'R',0);
@@ -819,7 +890,19 @@ class HelpersReport {
 
                 //Pastel does not recognise "/" code divider that itself exports!!
                 $item_code = Csv::csvPrep(str_replace('/','',$item['item_code']));
-                $item_desc = Secure::clean('string',$item['item_desc'],$clean_options);
+
+                //NB:Item description can contain multiple lines separated by "\r\n"
+                $item_desc = $item['item_desc'];
+                /* THIS WAS ATTEMPTING TO SPLIT ITEM DESC INTO MULTIPLE LINES BUT PASTEL JUST WONT ACCEPT 
+                $desc_lines = explode("\r\n",$item_desc);
+                $desc_xtra = false;
+                if(count($desc_lines) > 1) {
+                    //removes first line and returns it
+                    $item_desc = array_shift($desc_lines);
+                    $desc_xtra = true;
+                } 
+                */
+                $item_desc = Secure::clean('string',$item_desc,$clean_options);
                 
                 $line[] = Csv::csvPrep(substr($item_code,0,15)); //Code, Character, 15 maximum
                 $line[] = Csv::csvPrep(substr($item_desc,-40)); //Descriptiom, Character, 40 maximum, counting from right!
@@ -829,6 +912,34 @@ class HelpersReport {
 
                 $csv_line = implode(',',$line);
                 Csv::csvAddRow($csv_line,$csv_data);
+
+                //add any xtra remarks/item descriptions required
+                /*
+                if($desc_xtra) {
+                    foreach($desc_lines as $desc){
+                        $line = [];
+                        $line[] = 'Detail';
+                        $line[] = '0';
+                        $line[] = '0'; 
+                        $line[] = '0'; 
+                        $line[] = '0';
+                        $line[] = '';
+                        $line[] = '';
+                        $line[] = '0';
+                        $line[] = '0';
+ 
+                        $str = Secure::clean('string',$desc,$clean_options);
+                        $line[] = Csv::csvPrep(substr($item_code,0,15)); //Code, Character, 15 maximum
+                        $line[] = Csv::csvPrep(substr($str,-40)); //Descriptiom, Character, 40 maximum, counting from right!
+                        $line[] = '6'; //Line type, Character, 4=Inventory, 6=GL, 7=Remarks
+                        $line[] = ''; 
+                        $line[] = '';
+
+                        $csv_line = implode(',',$line);
+                        Csv::csvAddRow($csv_line,$csv_data);
+                    }
+                }
+                */
             }
         }
 

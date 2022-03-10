@@ -88,9 +88,11 @@ class Helpers {
         return $total;
     }
 
-    //get contract items & service visit items for invoice creation
+    //get contract items & service visit items invoice creation and display
     public static function getInvoiceItems($db,$table_prefix,$contract_id,$format = 'ARRAY',$invoice_type = 'STANDARD') 
     {
+        if($format === 'HTML') $line_break = '<br/>'; else $line_break = "\r\n";
+
         $table_visit = $table_prefix.'contract_visit';
         $table_visit_item = $table_prefix.'visit_item';
         //$table_contract = $table_prefix.'contract';
@@ -137,12 +139,15 @@ class Helpers {
                    'ORDER BY V.`date_visit` DESC LIMIT 1';
             $last_visit = $db->readSqlRecord($sql);
             if($last_visit != 0) {
-                if($last_visit['service_no'] != '') $contract_info .= ' Service Slip No: '.$last_visit['service_no'].'. ';
-                if(INVOICE_SETUP['last_visit_notes']) $contract_info .= $last_visit['notes'];
+                if($last_visit['service_no'] != '') $contract_info .= $line_break.'Service Slip No: '.$last_visit['service_no'].'. ';
+                if(INVOICE_SETUP['last_visit_notes'] and $last_visit['notes'] != '') $contract_info .= $line_break.$last_visit['notes'];
             }    
         }
         
         if($contract['type_id'] === 'SINGLE') {
+            //only for single contracts
+            if($contract['notes_client'] != '')  $contract_info .= $line_break.$contract['notes_client'];        
+
             $invoice_item = [];
             $invoice_item['code'] = $contract_item_code;
             $invoice_item['name'] = $contract_info;
@@ -165,7 +170,7 @@ class Helpers {
             
             if($invoice_type === 'AUDIT') {
                 $price = $contract['price_audit'];
-                $contract_info = 'Audit Fee';
+                $contract_info = 'Audit Fee: '.$contract_info;
             } else {
                 /*
                 $sql = 'SELECT COUNT(*) FROM `'.$table_visit.'` '.

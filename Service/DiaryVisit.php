@@ -81,6 +81,8 @@ class DiaryVisit Extends Record
         //$this->addRecordCol(['id'=>'feedback_id','type'=>'INTEGER','title'=>'Feedback','join'=>'`name` FROM `'.TABLE_PREFIX.'service_feedback` WHERE `feedback_id`','edit'=>true]);
         $this->addRecordCol(['id'=>'feedback_list','type'=>'CUSTOM','title'=>'Feedback','required'=>false]);
         $this->addRecordCol(['id'=>'feedback_notes','type'=>'TEXT','title'=>'Feedback Notes','required'=>false]);
+        $this->addRecordCol(['id'=>'feedback_user_id','type'=>'INTEGER','title'=>'Feedback User','required'=>false,
+                            'join'=>'`name` FROM `'.TABLE_USER.'` WHERE `user_id`']);
         $this->addRecordCol(['id'=>'feedback_status','type'=>'STRING','title'=>'Feedback Status','required'=>false]);
         $this->addRecordCol(['id'=>'service_no','type'=>'STRING','title'=>'Service slip no','required'=>false]);
         $this->addRecordCol(['id'=>'notes','type'=>'TEXT','title'=>'Notes','required'=>false]);
@@ -93,7 +95,10 @@ class DiaryVisit Extends Record
         $this->addSelect('feedback_status',['list'=>FEEDBACK_STATUS,'list_assoc'=>true]);
         $this->addSelect('category_id','SELECT `category_id`, `name` FROM `'.TABLE_PREFIX.'visit_category` ORDER BY `sort`');
         //$this->addSelect('feedback_id','SELECT `feedback_id`, `name` FROM `'.TABLE_PREFIX.'service_feedback` ORDER BY `sort`');
-        $this->addSelect('user_id_tech','SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`');
+        $this->addSelect('user_id_tech',['sql'=>'SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`',
+                                         'xtra'=>[0=>'No Linked user']]);
+        $this->addSelect('feedback_user_id',['sql'=>'SELECT `user_id`, `name` FROM `'.TABLE_USER.'` WHERE `zone` <> "PUBLIC" AND `status` <> "HIDE" ORDER BY `name`',
+                                             'xtra'=>[0=>'No Linked user']]);
        
     }   
 
