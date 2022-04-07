@@ -27,6 +27,142 @@ use App\Service\Helpers;
 //static functions for service module
 class HelpersReport {
 
+    //all visits where status = INVOICED or COMPLETED
+    public static function visitValue($db,$division_id,$round_id,$date_from,$date_to,$options = [],&$error)
+    {
+        $error = '';
+
+
+        if(!isset($options['output'])) $options['output'] = 'BROWSER';
+        if(!isset($options['format'])) $options['format'] = 'CSV';
+        $options['format'] = strtoupper($options['format']);
+
+        if(!isset($options['user_id_tech'])) $options['user_id_tech'] = 'ALL';
+        
+        if($division_id === 'ALL') {
+            $division_name = 'all divisions';
+        } else {
+            $division = Helpers::get($db,TABLE_PREFIX,'division',$division_id);
+            if($division == 0) {
+                $error .= 'Invalid Division['.$division_id.'] selected.';
+            } else {
+                $division_name = $division['name'];
+            }    
+        }
+
+        if($round_id === 'ALL') {
+            $round_name = 'all rounds';
+        } else {
+            $round = Helpers::get($db,TABLE_PREFIX,'service_round',$round_id,'round_id');
+            if($round == 0) {
+                $error .= 'Invalid round['.$round_id.'] selected.';
+            } else {
+                $round_name = $round['name'];
+            }    
+        }
+     
+        
+        if($error !== '') return false;
+
+        $doc_name_base = str_replace(' ','_',$round_name).'_'.str_replace(' ','_',$division_name).'_completed_visits_from_'.
+                         Date::formatDate($date_from).'_to_'.Date::formatDate($date_to).'_on_'.date('Y-m-d');
+
+        $page_title = $round_name.' '.$division_name.' completed visits from '.Date::formatDate($date_from).' to '.Date::formatDate($date_to);
+
+        $table_visit = TABLE_PREFIX.'contract_visit';
+        $table_contract = TABLE_PREFIX.'contract';
+        //$table_client = TABLE_PREFIX.'client';
+        //$table_location = TABLE_PREFIX.'client_location';
+        $table_user = TABLE_USER;
+        $table_round = TABLE_PREFIX.'service_round';
+        //switched to multiple feedback select
+        //$table_feedback = TABLE_PREFIX.'service_feedback';
+                
+        /*
+        SELECT V.visit_id,V.contract_id,V.user_id_booked,V.user_id_tech,U.name AS technician, '.
+                      'V.date_booked,V.date_visit,V.notes,V.status,V.time_from,V.time_to,V.status, '.
+                      'C.client_code, C.client_id,CL.name AS client,R.name AS round
+        */
+
+                      //F.`name` AS `feedback`
+        $sql = 'SELECT R.`name` AS `round`,U.`name` AS `technician`,V.`date_visit` As `date`,SUM(C.`price`) AS `value` '.
+               'FROM `'.$table_visit.'` AS V '.
+                     'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
+                     'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
+                     'LEFT JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
+               'WHERE V.`date_visit` >= "'.$db->escapeSql($date_from).'" AND V.`date_visit` <= "'.$db->escapeSql($date_to).'" AND '.
+                     '(V.`status` = "COMPLETED" OR V.`status` = "INVOICED") ';
+        if($division_id !== 'ALL') $sql .= 'AND C.`division_id` = "'.$db->escapeSql($division_id).'" ';    
+        if($round_id !== 'ALL') $sql .= 'AND V.`round_id` = "'.$db->escapeSql($round_id).'" ';       
+        if($options['user_id_tech'] != 'ALL') $sql .= 'AND V.`user_id_tech` = "'.$db->escapeSql($options['user_id_tech']).'" ';
+        
+        
+        $sql .= 'GROUP BY V.`round_id`, V.`user_id_tech`, V.`date_visit` '.
+                'ORDER BY V.`round_id`, V.`user_id_tech`, V.`date_visit` ';
+
+        //$error .= $sql;
+
+        $visits = $db->readSqlResult($sql,false);
+        if($visits == 0) {
+            $error .= 'No visits found for: '.$page_title;
+        }
+
+        if($error !== '') return false;
+
+            
+
+        $col_width = array(30,40,30,30);
+        $col_type = array('','','DATE','CASH2');
+
+        if($options['format'] === 'PDF') {
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
+            
+            $pdf = new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            
+            $pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options = [];
+            $pdf_options['font_size'] = 8;
+            $row_h = 6;
+            
+            $pdf->mysqlDrawTable($visits,$row_h,$col_width,$col_type,'L',$pdf_options);
+
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($doc_name,'D');    
+            exit;
+        }
+
+
+        if($options['format'] === 'HTML') {
+            $html_options = [];
+            $html_options['col_type'] = $col_type;
+            $html .= '<h2>'.$page_title.'</h2>';
+            $html .= Html::mysqlDumpHtml($visits,$html_options);
+        }
+
+        if($options['format'] === 'CSV') {
+            $doc_name = $base_doc_name.'_'.date('Y-m-d').'.csv';
+            $csv_data = Csv::mysqlDumpCsv($visits);
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD','csv');
+            exit;
+        }               
+
+        return $html;
+    }
+
     public static function visitFeedback($db,$division_id,$round_id,$status,$feedback_status,$date_from,$date_to,$options = [],&$error)
     {
         $error = '';
@@ -95,7 +231,7 @@ class HelpersReport {
                      //'LEFT JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
                'WHERE V.`date_visit` >= "'.$db->escapeSql($date_from).'" AND V.`date_visit` <= "'.$db->escapeSql($date_to).'" ';
         if($division_id !== 'ALL') $sql .= 'AND C.`division_id` = "'.$db->escapeSql($division_id).'" ';    
-        if($round_id !== 'ALL') $sql .= 'AND C.`round_id` = "'.$db->escapeSql($round_id).'" ';       
+        if($round_id !== 'ALL') $sql .= 'AND V.`round_id` = "'.$db->escapeSql($round_id).'" ';       
         if($options['user_id_tech'] != 'ALL') $sql .= 'AND V.`user_id_tech` = "'.$db->escapeSql($options['user_id_tech']).'" ';
         if($status != 'ALL') $sql .= 'AND V.`status` = "'.$db->escapeSql($status).'" ';
         if($feedback_status != 'ALL') {

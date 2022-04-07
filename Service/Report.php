@@ -46,7 +46,10 @@ class Report extends ReportTool
 
         $param = ['input'=>['select_division','select_round','select_technician','select_date_period',
                             'select_visit_status','select_feedback_status','select_format']];
-        $this->addReport('VISIT_FEEDBACK','Contract visit feedback',$param); 
+        $this->addReport('VISIT_FEEDBACK','Contract visit feedback',$param);
+
+        $param = ['input'=>['select_division','select_round','select_date_period','select_format']];
+        $this->addReport('VISIT_VALUE','Contract Visits daily value per technician',$param); 
         
         
         $this->addInput('select_division','');
@@ -237,6 +240,12 @@ class Report extends ReportTool
             $options['user_id_tech'] = $form['user_id_tech'];
             $html = HelpersReport::visitFeedback($this->db,$form['division_id'],$form['round_id'],$form['visit_status'],
                                                  $form['feedback_status'],$form['date_from'],$form['date_to'],$options,$error);
+            if($error !== '') $this->addError($error);
+        }
+
+        if($id === 'VISIT_VALUE') {
+            //$options['user_id_tech'] = $form['user_id_tech'];
+            $html = HelpersReport::visitValue($this->db,$form['division_id'],$form['round_id'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);
         }
 
