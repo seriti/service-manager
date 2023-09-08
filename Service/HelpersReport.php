@@ -85,7 +85,7 @@ class HelpersReport {
         */
 
                       //F.`name` AS `feedback`
-        $sql = 'SELECT R.`name` AS `round`,U.`name` AS `technician`,V.`date_visit` As `date`,SUM(C.`price`) AS `value` '.
+        $sql = 'SELECT R.`name` AS `round`,U.`name` AS `technician`,V.`date_visit` As `date`,COUNT(*) AS  `no_visits`,SUM(C.`price`) AS `value` '.
                'FROM `'.$table_visit.'` AS V '.
                      'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
                      'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
@@ -111,8 +111,8 @@ class HelpersReport {
 
             
 
-        $col_width = array(30,40,30,30);
-        $col_type = array('','','DATE','CASH2');
+        $col_width = array(30,40,30,10,30);
+        $col_type = array('','','DATE','','CASH2');
 
         if($options['format'] === 'PDF') {
             $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
@@ -221,12 +221,13 @@ class HelpersReport {
 
                       //F.`name` AS `feedback`
         $sql = 'SELECT CL.`name` AS `client`,L.`address`,C.`client_code` AS `contract_code`,U.`name` AS `technician`, '.
-                      'V.`date_visit`,V.`status`,V.`feedback_list` AS `feedback`,V.`feedback_status`,V.`feedback_notes` '.
+                      'V.`date_visit`,V.`status`,V.`feedback_list` AS `feedback`,V.`feedback_status`,V.`feedback_notes`,U2.`name` AS `feedback_user` '.
                'FROM `'.$table_visit.'` AS V '.
                      'JOIN `'.$table_contract.'` AS C ON(V.`contract_id` = C.`contract_id`) '.
                      'JOIN `'.$table_client.'` AS CL ON(C.`client_id` = CL.`client_id`) '.
                      'JOIN `'.$table_location.'` AS L ON(C.`location_id` = L.`location_id`) '.
                      'LEFT JOIN `'.$table_user.'` AS U ON(V.`user_id_tech` = U.`user_id`) '.
+                     'LEFT JOIN `'.$table_user.'` AS U2 ON(V.`feedback_user_id` = U2.`user_id`) '.
                      'LEFT JOIN `'.$table_round.'` AS R ON(V.`round_id` = R.`round_id`) '.
                      //'LEFT JOIN `'.$table_feedback.'` AS F ON(V.`feedback_id` = F.`feedback_id`) '.
                'WHERE V.`date_visit` >= "'.$db->escapeSql($date_from).'" AND V.`date_visit` <= "'.$db->escapeSql($date_to).'" ';
@@ -252,8 +253,8 @@ class HelpersReport {
 
             
 
-        $col_width = array(30,30,20,20,20,20,20,20,20);
-        $col_type = array('','','','','DATE','','','','');
+        $col_width = array(30,30,20,20,20,20,20,20,20,20);
+        $col_type = array('','','','','DATE','','','','','');
 
         if($options['format'] === 'PDF') {
             $doc_name = $base_doc_name.'_'.date('Y-m-d').'.pdf';
@@ -316,6 +317,8 @@ class HelpersReport {
 
         if(!isset($options['status'])) $options['status'] = 'ALL';
         if(!isset($options['type_id'])) $options['type_id'] = 'ALL';
+
+        if(!isset($options['date_last_type'])) $options['date_last_type'] = 'VISIT';
         
         //use date_last_visit to deterine contracts due a visit
         $search_date_visit = true;
@@ -435,12 +438,15 @@ class HelpersReport {
                 }
 
                 //calculate if visit is due over date interval
-                if($contract['date_last_visit']) {
-                    $date_last = Date::mysqlGetDate($contract['date_last_visit']);
-                    $date_next = date('Y-m-d',mktime(0,0,0,$date_last['mon']+$add_months,$date_last['mday']+$add_days,$date_last['year']));
+                if($options['date_last_type'] === 'VISIT') $date_last = $contract['date_last_visit'];
+                if($options['date_last_type'] === 'INVOICE') $date_last = $contract['date_last_invoice'];
+
+                if($date_last) {
+                    $last = Date::mysqlGetDate($date_last);
+                    $date_next = date('Y-m-d',mktime(0,0,0,$last['mon']+$add_months,$last['mday']+$add_days,$last['year']));
                 } else {
-                    //$date_last = Date::mysqlGetDate($contract['date_start']);
-                    //$date_next = date('Y-m-d',mktime(0,0,0,$date_last['mon']+$add_months,$date_last['mday']+$add_days,$date_last['year']));
+                    //$last = Date::mysqlGetDate($contract['date_start']);
+                    //$date_next = date('Y-m-d',mktime(0,0,0,$last['mon']+$add_months,$last['mday']+$add_days,$last['year']));
                     $date_next = $contract['date_start'];
                     $due  = true;
                 }
@@ -1029,7 +1035,8 @@ class HelpersReport {
 
                 //NB:Item description can contain multiple lines separated by "\r\n"
                 $item_desc = $item['item_desc'];
-                /* THIS WAS ATTEMPTING TO SPLIT ITEM DESC INTO MULTIPLE LINES BUT PASTEL JUST WONT ACCEPT 
+                // THIS WAS ATTEMPTING TO SPLIT ITEM DESC INTO MULTIPLE LINES BUT PASTEL JUST WONT ACCEPT 
+                /*
                 $desc_lines = explode("\r\n",$item_desc);
                 $desc_xtra = false;
                 if(count($desc_lines) > 1) {
@@ -1038,6 +1045,7 @@ class HelpersReport {
                     $desc_xtra = true;
                 } 
                 */
+
                 $item_desc = Secure::clean('string',$item_desc,$clean_options);
                 
                 $line[] = Csv::csvPrep(substr($item_code,0,15)); //Code, Character, 15 maximum
@@ -1050,7 +1058,7 @@ class HelpersReport {
                 Csv::csvAddRow($csv_line,$csv_data);
 
                 //add any xtra remarks/item descriptions required
-                /*
+                /* Pastel just ignores these lines with and without item_code
                 if($desc_xtra) {
                     foreach($desc_lines as $desc){
                         $line = [];
@@ -1067,7 +1075,7 @@ class HelpersReport {
                         $str = Secure::clean('string',$desc,$clean_options);
                         $line[] = Csv::csvPrep(substr($item_code,0,15)); //Code, Character, 15 maximum
                         $line[] = Csv::csvPrep(substr($str,-40)); //Descriptiom, Character, 40 maximum, counting from right!
-                        $line[] = '6'; //Line type, Character, 4=Inventory, 6=GL, 7=Remarks
+                        $line[] = '7'; //Line type, Character, 4=Inventory, 6=GL, 7=Remarks
                         $line[] = ''; 
                         $line[] = '';
 
@@ -1076,6 +1084,7 @@ class HelpersReport {
                     }
                 }
                 */
+
             }
         }
 

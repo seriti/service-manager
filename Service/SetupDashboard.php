@@ -6,8 +6,6 @@ use Seriti\Tools\Dashboard AS DashboardTool;
 
 class SetupDashboard extends DashboardTool
 {
-    protected $labels = MODULE_RESERVE['labels'];
-
     //configure
     public function setup($param = []) 
     {

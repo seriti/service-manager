@@ -43,8 +43,7 @@ class ContractVisit extends Table
         $this->addTableCol(['id'=>'notes','type'=>'TEXT','title'=>'Invoice Notes','required'=>false]);
         
 
-
-        $this->addSortOrder('T.`visit_id` DESC','Most recent first','DEFAULT');
+        $this->addSortOrder('T.`date_visit` DESC','Most recent first','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);

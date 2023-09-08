@@ -38,7 +38,7 @@ class ContractItem extends Table
 
     }
 
-    protected function beforeProcess($id) 
+    protected function beforeProcess($id = 0) 
     {
         $contract = Helpers::get($this->db,TABLE_PREFIX,'contract',$this->master['key_val']);
         $this->addSelect('item_id','SELECT `item_id`, `name` FROM `'.TABLE_PREFIX.'service_item` WHERE `division_id` = "'.$contract['division_id'].'" ORDER BY `sort`');    

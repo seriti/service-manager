@@ -51,7 +51,7 @@ class ClientContact extends Table
 
     }
 
-    protected function beforeProcess($id) 
+    protected function beforeProcess($id = 0) 
     {
         $this->addSelect('location_id',
                          'SELECT `location_id`, `name` FROM `'.TABLE_PREFIX.'client_location` '.

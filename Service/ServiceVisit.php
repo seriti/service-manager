@@ -56,7 +56,7 @@ class ServiceVisit extends Table
         $this->addSql('JOIN','LEFT JOIN `'.TABLE_PREFIX.'contract` AS C ON(T.`contract_id` = C.`contract_id`)');
         $this->addSql('JOIN','LEFT JOIN `'.TABLE_PREFIX.'client` AS CL ON(C.`client_id` = CL.`client_id`)');
                
-        $this->addSortOrder('T.`visit_id` DESC','Most recent first','DEFAULT');
+        $this->addSortOrder('T.`date_visit` DESC','Most recent first','DEFAULT');
 
 
         $this->addAction(['type'=>'check_box','text'=>'']);

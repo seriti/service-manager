@@ -22,7 +22,7 @@ class ServiceVisitController
         $html = $table->processTable();
 
         $template['html'] = $html;
-        $template['title'] = MODULE_LOGO.'All COMPLETED contract visits';
+        $template['title'] = MODULE_LOGO.'All planned and completed contract visits';
                 
         return $this->container->view->render($response,'admin.php',$template);
     }

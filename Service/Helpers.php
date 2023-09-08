@@ -586,7 +586,7 @@ class Helpers {
         $frame_y = $pdf->getY();
         
         //NB: display of item totals seems to be quite arbitrary, ie not necessarily inclusive total
-        if(count($items) != 0) {
+        if($items !== 0) {
             
             $arr = [];
             $r = 0;
@@ -880,7 +880,7 @@ class Helpers {
         $param = ['get'=>'ALL'];
         $data = self::getContract($db,$table_prefix,$contract_id,$param);
 
-        if(count($data['contract']) === 0) {
+        if($data['contract'] === 0) {
             $html['contact'] .= 'Could not get details for contract['.$contract_id.']';
         } else {
             $html['contact'] = 'Contract code <b>'.$data['contract']['client_code'].'</b> for client <b>'.$data['contract']['client'].'</b>: contact <b>'.$data['contract']['contact'].'</b> @ ';
@@ -889,7 +889,7 @@ class Helpers {
             if($data['contract']['contact_email']) $html['contact'] .=  '<a href="mailto:'.$data['contract']['contact_email'].'">'.$data['contract']['contact_email'].'</a> ';
         }
 
-        if(count($data['visits']) === 0) {
+        if($data['visits'] === 0) {
             $html['visits'] .= 'No visits for contract['.$contract_id.']';
         } else {
             $arr = [];
@@ -900,7 +900,7 @@ class Helpers {
             
         }
 
-        if(count($data['items']) === 0) {
+        if($data['items'] === 0) {
             $html['items'] .= 'No items linked to contract['.$contract_id.']';
         } else {
             $html['items'] .= 'Contract items: '.Html::arrayDumpHtml($data['items']);

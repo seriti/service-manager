@@ -33,7 +33,7 @@ $invoice_type = $data['invoice_type'];
         
         if($contract['inv_create'] == true) {
             $link_param = 'id='.$id.'&type='.$invoice_type;
-            $item_link = '<a href="Javascript:open_popup(\'invoice_wizard_item?'.$link_param.'\',600,600)">Invoice items</a>';
+            $item_link = '<a href="Javascript:open_popup(\'invoice_wizard_item?'.$link_param.'\',800,600)">Invoice items</a>';
 
             echo '<tr>'.
                  '<td>'.$id.': '.$item_link.'</td>'.

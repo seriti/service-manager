@@ -39,7 +39,7 @@ class ServicePrice extends Table
 
     }
 
-    protected function beforeProcess($id) 
+    protected function beforeProcess($id = 0) 
     {                       
         $this->addSelect('item_id','SELECT `item_id`,`name` FROM `'.TABLE_PREFIX.'service_item` WHERE `division_id` = "'.$this->master['key_val'].'" ORDER BY `name`');
     }

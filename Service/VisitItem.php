@@ -41,7 +41,7 @@ class VisitItem extends Table
 
     }
 
-    protected function beforeProcess($id) 
+    protected function beforeProcess($id = 0) 
     {
         $sql = 'SELECT C.`division_id` FROM `'.TABLE_PREFIX.'contract_visit` AS V JOIN `'.TABLE_PREFIX.'contract` AS C ON(V.`contract_id` = C.`contract_id`) '.
                'WHERE V.`visit_id` = "'.$this->db->escapeSql($this->master['key_val']).'" ';

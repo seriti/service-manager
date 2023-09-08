@@ -16,6 +16,8 @@ class Report extends ReportTool
     protected $contract_status = ['ALL'=>'ALL active contracts','NEW'=>'NEW contracts','OK'=>'OK contracts'];
     protected $contract_type = ['ALL'=>'SINGLE Shot & REPEAT contracts','SINGLE'=>'SINGLE Shot contracts','REPEAT'=>'REPEAT contracts'];
 
+    protected $date_last_type = ['VISIT'=>'Date last Visited','INVOICE'=>'Date last Invoiced'];
+
     //configure
     public function setup() 
     {
@@ -41,7 +43,7 @@ class Report extends ReportTool
         $param = ['input'=>['select_division','select_date_period','select_contract_status','select_contract_type','select_format']];
         $this->addReport('CONTRACT_ORPHAN_INVOICE','Contracts without an invoice over period',$param);
         $this->addReport('CONTRACT_ORPHAN_VISIT','Contracts without a planned or completed visit over period',$param); 
-        //$param = ['input'=>['select_division','select_format']];
+        $param = ['input'=>['select_division','select_date_period','select_contract_status','select_contract_type','select_date_last_type','select_format']];
         $this->addReport('WORK_DUE','Contract Services & Invoices due',$param); 
 
         $param = ['input'=>['select_division','select_round','select_technician','select_date_period',
@@ -58,6 +60,7 @@ class Report extends ReportTool
         $this->addInput('select_round','');
         $this->addInput('select_date_period','');
         $this->addInput('select_date','');
+        $this->addInput('select_date_last_type','');
         $this->addInput('select_technician','');
         $this->addInput('select_user','');
         $this->addInput('select_visit_status','');
@@ -176,7 +179,15 @@ class Report extends ReportTool
             if(isset($form['contract_type'])) $contract_type = $form['contract_type']; else $contract_type = 'REPEAT';
             $key_assoc = true;
             $html .= 'Contract type:&nbsp;'.Form::arrayList($this->contract_type,'contract_type',$contract_type,$key_assoc,$param);
-        }   
+        }
+
+        if($id === 'select_date_last_type') {
+            $param = [];
+            $param['class'] = 'form-control input-medium input-inline';
+            if(isset($form['date_last_type'])) $date_last_type = $form['date_last_type']; else $date_last_type = 'VISIT';
+            $key_assoc = true;
+            $html .= 'Reference from:&nbsp;'.Form::arrayList($this->date_last_type,'date_last_type',$date_last_type,$key_assoc,$param);
+        }    
         
         if($id === 'select_format') {
             if(isset($form['format'])) $format = $form['format']; else $format = 'HTML';
@@ -231,6 +242,7 @@ class Report extends ReportTool
         if($id === 'WORK_DUE') {
             $options['type_id'] = $form['contract_type'];
             $options['status'] = $form['contract_status'];
+            $options['date_last_type'] = $form['date_last_type'];
             $html = HelpersReport::workPlanning($this->db,'DUE',$form['division_id'],$form['date_from'],$form['date_to'],$options,$error);
             if($error !== '') $this->addError($error);
         }
